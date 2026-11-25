@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data: blob:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<title>ModelDesk 任务进度</title>
+<!-- INLINE_STYLE -->
+</head>
+<body>
+<section id="task-strip" aria-label="任务进度">
+  <div class="strip-row">
+    <canvas id="avatar" width="36" height="36" aria-hidden="true"></canvas>
+    <div class="strip-data">
+      <div class="strip-title"><strong id="engine"></strong><span id="task-title">等待任务回执…</span><b id="task-state" role="status"></b></div>
+      <div class="strip-meter" aria-hidden="true"></div><p id="latest-log"></p>
+    </div>
+    <div class="strip-actions">
+      <button id="toggle-log" type="button" aria-controls="tail" aria-expanded="false" disabled>日志</button>
+      <button id="task-action" type="button" hidden></button>
+    </div>
+  </div>
+  <pre id="tail" tabindex="0" aria-label="最近 15 行任务日志" hidden></pre>
+  <div id="strip-error" role="status" hidden></div>
+  <section id="resume-review" hidden>
+    <pre id="resume-diff" tabindex="0"></pre>
+    <div><button id="resume-confirm" type="button">确认续跑</button><button id="resume-dismiss" type="button">取消</button></div>
+  </section>
+</section>
+<!-- INLINE_SCRIPT -->
+</body>
+</html>

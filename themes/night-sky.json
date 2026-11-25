@@ -1,0 +1,31 @@
+{
+  "id": "modeldesk-night-sky",
+  "label": "ModelDesk · 夜空",
+  "mode": "dark",
+  "seeds": {
+    "background": "#191623",
+    "foreground": "#F4EAD6",
+    "primary": "#B7A3FF",
+    "primaryForeground": "#21162D",
+    "codeForeground": "#F0BC68",
+    "link": "#C6B8FF",
+    "success": "#A2DBA8",
+    "warning": "#F0BC68",
+    "error": "#FF97A3",
+    "sidebar": "#221D31",
+    "sidebarStrong": "#2F2742",
+    "card": "#201B2D",
+    "cardStrong": "#2C2343",
+    "border": "#50435E",
+    "borderStrong": "#7F6B94",
+    "cardBorder": "#51465E",
+    "cardBorderStrong": "#776686",
+    "homeGlow": "#352547"
+  },
+  "syntax": {
+    "keyword": "#C7ADFF",
+    "string": "#A2DBA8",
+    "comment": "#B0A1A4",
+    "number": "#F0BC68"
+  }
+}

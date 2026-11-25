@@ -1,0 +1,12 @@
+{
+  "name": "modeldesk-workbench",
+  "displayName": "ModelDesk 像素工作台",
+  "version": "2.0.0",
+  "description": "Antigravity 原生 16-bit 像素工作台，提供多 CLI 协作、内联任务进度、实时思考卷轴、产物管理与上下文用量。",
+  "logo": "assets/logo.svg",
+  "suggestedPrompts": [
+    "打开 ModelDesk 工作台面板，查看当前上下文占用与交付产物",
+    "派单给 Codex 或 Qoder 协作执行任务，并在像素办公室查看实时状态",
+    "使用内置独立翻译对照翻译当前交付文档"
+  ]
+}

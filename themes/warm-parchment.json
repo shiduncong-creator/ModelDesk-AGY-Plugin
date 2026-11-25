@@ -1,0 +1,31 @@
+{
+  "id": "modeldesk-warm-parchment",
+  "label": "ModelDesk · 暖日羊皮纸",
+  "mode": "light",
+  "seeds": {
+    "background": "#F2E5C9",
+    "foreground": "#3A2617",
+    "primary": "#5437CE",
+    "primaryForeground": "#FFF8E8",
+    "codeForeground": "#6C3919",
+    "link": "#5033B7",
+    "success": "#3C633F",
+    "warning": "#87440F",
+    "error": "#9A3141",
+    "sidebar": "#E9D4AD",
+    "sidebarStrong": "#DFBE8D",
+    "card": "#F7EED9",
+    "cardStrong": "#EFE0BF",
+    "border": "#B48455",
+    "borderStrong": "#8C572C",
+    "cardBorder": "#C29C70",
+    "cardBorderStrong": "#9A6E43",
+    "homeGlow": "#E8DAC8"
+  },
+  "syntax": {
+    "keyword": "#5638A3",
+    "string": "#355B3A",
+    "comment": "#775D45",
+    "number": "#8C4222"
+  }
+}

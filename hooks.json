@@ -1,0 +1,44 @@
+{
+  "modeldesk-observer": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "bash ./scripts/run-hook.sh",
+        "timeout": 1
+      }
+    ],
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "bash ./scripts/run-hook.sh",
+        "timeout": 1
+      }
+    ],
+    "PostInvocation": [
+      {
+        "type": "command",
+        "command": "bash ./scripts/run-hook.sh",
+        "timeout": 1
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "bash ./scripts/run-hook.sh",
+        "timeout": 1
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "run_command|write_to_file|replace_file_content|multi_replace_file_content|write_file|edit_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ./scripts/run-hook.sh",
+            "timeout": 1
+          }
+        ]
+      }
+    ]
+  }
+}

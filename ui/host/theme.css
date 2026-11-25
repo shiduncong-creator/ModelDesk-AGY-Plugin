@@ -1,0 +1,479 @@
+/* The host keeps its native controls, virtual lists, text selection and tab ownership.
+   Source pixel painting and the original office sprite credits are in ui/host/art. */
+@font-face {
+    font-family: "ModelDesk Fusion Pixel";
+    src: url("art/fusion-pixel.woff2") format("woff2");
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+}
+:root, body:is(.theme-light,.light-theme,.light) {
+    --farm-ink: #382e27;
+    --farm-pixel-type: "ModelDesk Fusion Pixel","PingFang SC",monospace;
+    --farm-stain: #26190f60;
+    --farm-caption: #645340;
+    --farm-paper: #f8f0db;
+    --farm-paper-bright: #fff7e3;
+    --farm-rail: #dfc99e;
+    --farm-edge: #805636;
+    --farm-beam: #583b2c;
+    --farm-metal: #cda25c;
+    --farm-title: #fdf0c6;
+    --farm-glint: #fce1a1;
+    --farm-moss: #345c45;
+    --farm-moss-light: #527b59;
+    --farm-picked: #dfc184;
+    --farm-water: #315f68;
+    --farm-wood: url("art/timber-day.png");
+    --farm-page: url("art/paper-day.png");
+    --farm-frame: url("art/frame-day.png");
+    --farm-valley: url("art/valley-day.png");
+    --farm-field: url("art/field-day.png");
+    --farm-rule: #777e7b24;
+    --farm-margin: #b26b4d46;
+    --farm-room: url("art/workshop-day.png");
+}
+:is(html,body):is(.theme-dark,.dark,.dark-theme) {
+    --farm-ink: #f0e5c8;
+    --farm-stain: #20182328;
+    --farm-caption: #c1b7a5;
+    --farm-paper: #302d37;
+    --farm-paper-bright: #393440;
+    --farm-rail: #49404a;
+    --farm-edge: #94765d;
+    --farm-beam: #292530;
+    --farm-metal: #c49c69;
+    --farm-title: #f9e9c1;
+    --farm-glint: #927b68;
+    --farm-moss: #365950;
+    --farm-moss-light: #53786b;
+    --farm-picked: #53494c;
+    --farm-water: #accfc9;
+    --farm-wood: url("art/timber-night.png");
+    --farm-page: url("art/paper-night.png");
+    --farm-frame: url("art/frame-night.png");
+    --farm-valley: url("art/valley-night.png");
+    --farm-field: url("art/field-night.png");
+    --farm-rule: #a5bab316;
+    --farm-margin: #c4958960;
+    --farm-room: url("art/workshop-night.png");
+}
+
+body, body:is(.theme-light,.theme-dark,.light-theme,.dark-theme,.light,.dark) {
+    --background: var(--farm-paper);
+    --content: var(--farm-paper);
+    --shell: var(--farm-rail);
+    --shell-canvas: var(--farm-beam);
+    --body-background: var(--farm-paper);
+    --sidebar: var(--farm-rail);
+    --sidebar-muted: var(--farm-picked);
+    --sidebar-secondary: var(--farm-picked);
+    --secondary: var(--farm-picked);
+    --card: var(--farm-paper-bright);
+    --card-border: var(--farm-edge);
+    --border: var(--farm-edge);
+    --foreground: var(--farm-ink);
+    --secondary-foreground: var(--farm-ink);
+    --muted-foreground: var(--farm-caption);
+    --link: var(--farm-water);
+    --md-ink: var(--farm-ink);
+    --md-panel: var(--farm-paper-bright);
+    --md-edge: var(--farm-edge);
+    --md-accent: var(--farm-water);
+    color: var(--farm-ink);
+    background: var(--farm-paper) var(--farm-page);
+}
+
+/* Dark wooden rails belong to the shell. Leave Chromium's browser-hole ancestors
+   transparent so its native web-content view can occupy its existing cutout. */
+.agy-shell:not(.browser-hole-ancestor),
+.agy-inset-shell:not(.browser-hole-ancestor) { background: var(--farm-beam) var(--farm-wood); }
+.agy-card:not(.browser-hole-ancestor), [data-testid="overview-panel"],
+[data-testid="side-panel-new-tab-view"] {
+    border-color: var(--farm-edge);
+    background: var(--farm-paper) var(--farm-page);
+    color: var(--farm-ink);
+}
+.agy-card-deck-edge { background: var(--farm-beam) var(--farm-wood); border-color: var(--farm-beam); }
+.agy-card, .agy-user-bubble, .agy-user-bubble-frame, .surface-composer, .surface-composer-card {
+    border-radius: 2px !important;
+}
+
+/* The scroll container uses measured and translated virtual rows. Its scenery and
+   material are backgrounds; the illustrated navigation banner lives outside it. */
+[data-testid="conversation-list-sidebar"], [data-testid="settings-sidebar"],
+[data-testid="tab-file-tree-sidebar"], [data-testid="subagent-tab-sidebar"],
+[data-testid="terminals-and-tasks-sidebar"], [data-testid="sidebar-navigation-items"] {
+    color: var(--farm-ink);
+    background-color: var(--farm-rail);
+    background-image: linear-gradient(90deg, color-mix(in srgb, var(--farm-edge) 21%,transparent),transparent 5px,transparent calc(100% - 5px),color-mix(in srgb,var(--farm-beam) 32%,transparent)),
+                      repeating-linear-gradient(0deg, transparent 0 30px, color-mix(in srgb,var(--farm-ink) 7%,transparent) 30px 31px, transparent 31px 33px);
+    box-shadow: inset -2px 0 var(--farm-edge);
+}
+[data-testid="sidebar-navigation-items"] {
+    border-bottom: 3px solid var(--farm-beam);
+    border-radius: 1px;
+    padding: 4px;
+}
+[data-testid="sidebar-navigation-items"]::before,
+[data-testid="settings-sidebar"]::before {
+    content: "";
+    display: block;
+    flex: none;
+    min-width: 0;
+    height: clamp(56px,8.6vh,88px);
+    background: var(--farm-rail) var(--farm-room) center / cover no-repeat;
+    border: 5px solid transparent;
+    border-image: var(--farm-frame) 6 / 5px repeat;
+    margin: 0 0 4px;
+    image-rendering: pixelated;
+    pointer-events: none;
+}
+[data-testid="settings-sidebar"]::before { margin: 7px 7px 0; background-image: var(--farm-room); }
+[data-testid="new-conversation-button"], [data-testid="app-icon-new-conversation-button"] {
+    color: var(--farm-title) !important;
+    background: var(--farm-moss) !important;
+    border: 1px solid #2e4130;
+    border-radius: 2px !important;
+    box-shadow: inset 1px 1px var(--farm-moss-light), inset -1px -1px #293e35, 0 2px var(--farm-edge);
+}
+[data-testid="project-header"], [data-testid="conversation-navigator-group-card-header"] {
+    color: var(--farm-title) !important;
+    background: linear-gradient(var(--farm-stain),var(--farm-stain)), var(--farm-beam) var(--farm-wood) !important;
+    text-shadow: 0 1px var(--farm-beam);
+    border: 1px solid var(--farm-beam);
+    border-radius: 2px !important;
+    box-shadow: inset 0 1px var(--farm-glint), inset 0 -2px var(--farm-edge);
+}
+[data-testid="project-header"] { padding-inline: 7px !important; }
+[data-testid="project-header"] :is(svg,[data-project-label],span),
+[data-testid="conversation-navigator-group-card-header"] [data-titled] { color: inherit; }
+.agy-sidebar-row { border-radius: 1px !important; }
+.agy-sidebar-row:is(:hover,:focus-visible), [data-testid="settings-sidebar"] button:hover,
+[data-testid="conversation-list-sidebar"] :is([aria-current="page"],[aria-selected="true"]),
+[role="treeitem"][aria-selected="true"] {
+    background-color: var(--farm-picked);
+    box-shadow: inset 3px 0 var(--farm-moss-light);
+}
+[data-testid="sidebar-row-shortcut-badge"], .agy-sidebar-shortcut-hint {
+    border-radius: 2px;
+    color: var(--farm-caption);
+    font-variant-numeric: tabular-nums;
+}
+
+/* The field is visible through the page gutters. Message cards are opaque. */
+[data-testid="conversation-view"] {
+    color: var(--farm-ink);
+    background-color: var(--farm-paper);
+    background-image: var(--farm-field), var(--farm-page);
+    background-position: center bottom, left top;
+    background-size: 100% auto, 64px 64px;
+    background-repeat: no-repeat, repeat;
+    image-rendering: pixelated;
+}
+[data-testid="conversation-view"] :is(img,video,svg,canvas) { image-rendering: auto; }
+[data-testid="conversation-view"] canvas[data-modeldesk-pixel] { image-rendering: pixelated; }
+[data-testid="user-message-bubble"] {
+    color: var(--farm-ink);
+    background: var(--farm-paper-bright) !important;
+    border: 4px solid transparent;
+    border-image: var(--farm-frame) 6 / 4px repeat;
+    border-radius: 0 !important;
+}
+.agy-user-bubble-frame { background: transparent !important; box-shadow: 1px 2px var(--farm-beam); }
+[data-testid="agent-response"]:not(:empty) {
+    position: relative;
+    border: 5px solid transparent;
+    border-image: var(--farm-frame) 6 / 5px repeat;
+    background: var(--farm-paper) var(--farm-page);
+    box-shadow: 2px 3px 0 color-mix(in srgb,var(--farm-beam) 75%,transparent);
+    padding: 8px 12px;
+    color: var(--farm-ink);
+}
+@media (min-width:1000px) {
+    [data-testid="agent-response"]:not(:empty)::before {
+        content: "";
+        position: absolute;
+        width: 27px;
+        height: 33px;
+        left: -34px;
+        top: 2px;
+        background: url("art/silver-dragon.png") center bottom / contain no-repeat;
+        image-rendering: pixelated;
+        pointer-events: none;
+    }
+}
+/* On the native home screen the drop scope is a sibling of conversation-view.
+   Its scroll spacer remains shrinkable when the welcome illustration is visible. */
+.agy-inset-shell { --card-radius: 2px !important; }
+.agy-inset-shell [data-main-content-body]:has([data-testid="home-greeting"]),
+[data-media-drop-scope]:has([data-testid="home-greeting"]),
+[data-testid="conversation-view"]:has([data-testid="home-greeting"]) {
+    background-color: var(--farm-paper);
+    background-image:
+        linear-gradient(90deg, transparent 22px, var(--farm-margin) 22px 23px, transparent 23px 26px, var(--farm-margin) 26px 27px, transparent 27px),
+        repeating-linear-gradient(0deg,transparent 0 28px,var(--farm-rule) 28px 29px),
+        var(--farm-page);
+    background-size: auto, auto, 64px 64px;
+    background-position: left top;
+    background-repeat: repeat;
+}
+.agy-inset-shell [data-main-content-body]:has([data-testid="home-greeting"]) {
+    box-shadow: inset 0 0 0 2px var(--farm-edge);
+}
+[aria-hidden="true"]:has(+ [data-testid="home-greeting"]) { flex-basis: clamp(15px,8vh,74px) !important; }
+[data-testid="home-greeting"] {
+    width: min(760px, 93%);
+    flex-shrink: 0;
+    text-align: center;
+}
+[data-testid="home-greeting"] .home-greeting-mark { display: none; }
+[data-testid="home-greeting"]::before {
+    content: "";
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3.45;
+    max-height: 25vh;
+    margin-inline: auto;
+    background: var(--farm-valley) center 64% / cover no-repeat;
+    border: 7px solid transparent;
+    border-image: var(--farm-frame) 6 / 7px repeat;
+    box-shadow: 3px 4px 0 var(--farm-beam);
+    image-rendering: pixelated;
+}
+[data-testid="home-greeting"] .home-greeting-title {
+    margin-top: 12px !important;
+    font-family: Georgia,"Songti SC",serif;
+    font-weight: 700;
+    color: var(--farm-title);
+    background: var(--farm-beam) var(--farm-wood);
+    border: 4px solid transparent;
+    border-image: var(--farm-frame) 6 / 4px repeat;
+    padding: 3px clamp(9px,2vw,25px) 6px;
+    line-height: 1.25;
+    box-shadow: 1px 2px var(--farm-beam);
+    text-shadow: 1px 1px var(--farm-beam);
+}
+/* The visible writing surface is inside agent-input-box. Keep its queued items
+   and drop targets in their original order. */
+[data-testid="agent-input-box"] .surface-composer,
+[data-testid="agent-input-box"] [id="antigravity.agentSidePanelInputBox"] {
+    background: var(--farm-beam) var(--farm-wood) !important;
+    border: 6px solid transparent !important;
+    border-image: var(--farm-frame) 6 / 6px repeat !important;
+    border-radius: 0 !important;
+    box-shadow: 2px 3px 0 var(--farm-beam);
+}
+[data-testid="agent-input-box"] .surface-composer-card, [data-testid="agent-input-box"] .agy-composer-footer {
+    background-color: var(--farm-paper-bright) !important;
+    border-radius: 0 !important;
+    color: var(--farm-ink);
+}
+[data-testid="agent-input-box"] .surface-composer:focus-within {
+    outline: 2px solid var(--farm-moss-light);
+    outline-offset: 1px;
+}
+[data-testid="send-button"]:not(:disabled), [data-testid="model-selector-trigger"] {
+    border-radius: 2px !important;
+    border: 1px solid var(--farm-edge);
+    box-shadow: inset 0 1px var(--farm-glint), 0 1px var(--farm-beam);
+}
+[data-testid="send-button"]:not(:disabled) { background: var(--farm-moss) !important; color: var(--farm-title) !important; }
+
+.agy-aux-tab, [role="tab"] {
+    border-radius: 2px 2px 0 0 !important;
+    border: 1px solid var(--farm-edge);
+    background-color: var(--farm-rail);
+    box-shadow: inset 0 1px var(--farm-glint);
+}
+.agy-aux-tab.bg-muted, [role="tab"][aria-selected="true"] {
+    background: var(--farm-beam) var(--farm-wood);
+    color: var(--farm-title);
+    box-shadow: inset 0 2px var(--farm-metal);
+}
+[data-testid="overview-panel-host-header"], [data-testid="pane-titlebar-toolbar"] {
+    background-color: var(--farm-rail);
+    border-radius: 2px;
+}
+[data-testid="settings-sidebar"] h1, [data-testid="overview-panel-host-header"] h2 {
+    color: var(--farm-ink);
+    font-family: Georgia,"Songti SC",serif;
+    font-weight: 700;
+}
+body:has([data-testid="settings-sidebar"]) :is(main,[role="main"],.bg-content) {
+    background: var(--farm-paper) var(--farm-page);
+    color: var(--farm-ink);
+}
+body:has([data-testid="settings-sidebar"]) :is(main,[role="main"],.bg-content) :is(h1,h2,h3) {
+    font-family: Georgia,"Songti SC",serif;
+    color: var(--farm-ink);
+}
+[data-testid="settings-app-version-card"], [data-testid="settings-error-messages-card"],
+[data-testid="side-panel-new-tab-view"] [data-testid^="new-tab-card-"],
+[role="dialog"]:not(.browser-hole-ancestor) {
+    background-color: var(--farm-paper-bright);
+    border: 4px solid transparent;
+    border-image: var(--farm-frame) 6 / 4px repeat;
+    border-radius: 2px;
+}
+
+body:has([data-testid="settings-sidebar"]) :is(main,[role="main"],.bg-content,section):not([data-has-browser-hole="true"]) :is(h2,h3) {
+    display: table;
+    max-width: 100%;
+    width: fit-content;
+    padding: 3px 10px;
+    background: var(--farm-beam) var(--farm-wood);
+    color: var(--farm-title);
+    border: 3px solid transparent;
+    border-image: var(--farm-frame) 6 / 3px repeat;
+    line-height: 1.3;
+}
+[data-testid="agent-input-box"] .surface-composer > :not(.surface-composer-card) :is(button,[role="combobox"]) {
+    color: var(--farm-title);
+    text-shadow: 1px 1px var(--farm-beam);
+}
+/* Fusion Pixel ships unchanged from the author's 12px simplified-Chinese
+   proportional build. Body, editors, code, application icons and file contents keep
+   their upstream faces. Only lettering on signs and tabs uses the bitmap glyphs. */
+[data-testid="home-greeting"] .home-greeting-title,
+[data-testid="project-header"], [data-testid="project-header"] [data-project-label],
+[data-testid="conversation-navigator-group-card-header"], [data-testid="new-conversation-button"],
+.agy-aux-tab, [role="tab"], [data-testid="settings-sidebar"] h1,
+body:has([data-testid="settings-sidebar"]) :is(main,[role="main"],section) :is(h1,h2,h3),
+[data-modeldesk-host-menu] [data-modeldesk-menu-label] {
+    font-family: var(--farm-pixel-type);
+    font-weight: 400;
+    font-synthesis: none;
+}
+[data-testid="home-greeting"] .home-greeting-title {
+    font-size: clamp(24px,2.4vw,36px);
+    background-image: linear-gradient(var(--farm-stain),var(--farm-stain)),var(--farm-wood);
+}
+/* Base UI portals project/model pickers and their nested menus outside the
+   composer. The positioning wrapper owns collision, focus and available height. */
+body :is(.agy-overlay.surface-glass:is([role="menu"],[role="listbox"]),
+         .agy-overlay.surface-glass:has(> [data-testid="model-selector-panel"],[data-testid="project-selector-list"]),
+         [data-bottom-sheet-popup]:has(.agy-overlay-item,[data-testid="model-selector-panel"])) {
+    --glass: var(--farm-paper);
+    --secondary: var(--farm-picked);
+    --secondary-foreground: var(--farm-ink);
+    --muted-foreground: var(--farm-caption);
+    --border: var(--farm-edge);
+    background: var(--farm-paper) var(--farm-page) !important;
+    color: var(--farm-ink);
+    border: 5px solid transparent !important;
+    border-image: var(--farm-frame) 6 / 5px repeat !important;
+    border-radius: 0 !important;
+    box-shadow: 2px 3px 0 color-mix(in srgb,var(--farm-beam) 80%,transparent) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+}
+:is(.agy-overlay.surface-glass,[data-bottom-sheet-popup]) .text-muted-foreground { color: var(--farm-caption); }
+:is(.agy-overlay.surface-glass,[data-bottom-sheet-popup]) .agy-overlay-item {
+    border-radius: 1px !important;
+    color: var(--farm-ink);
+}
+:is(.agy-overlay.surface-glass,[data-bottom-sheet-popup]) .agy-overlay-item:not(:disabled,[aria-disabled="true"],[data-disabled]):is(:hover,:focus-visible,[data-highlighted],[aria-selected="true"]) {
+    color: var(--farm-ink);
+    background-color: var(--farm-picked);
+    box-shadow: inset 3px 0 var(--farm-moss-light);
+}
+:is(.agy-overlay.surface-glass,[data-bottom-sheet-popup]) :is(
+    [data-testid="menu-search"],[data-testid^="project-selector-"][data-testid$="-search"],
+    [data-testid="model-selector-header"],[data-testid="model-selector-effort-header"]) {
+    color: var(--farm-title);
+    background: linear-gradient(var(--farm-stain),var(--farm-stain)),var(--farm-beam) var(--farm-wood);
+    border-bottom: 1px solid var(--farm-beam);
+}
+:is(.agy-overlay.surface-glass,[data-bottom-sheet-popup]) :is([data-testid="model-selector-header"],[data-testid="model-selector-effort-header"]) {
+    font-family: var(--farm-pixel-type);
+    padding-block: 3px;
+}
+:is(.agy-overlay.surface-glass,[data-bottom-sheet-popup]) :is([data-testid="menu-search"],[data-testid^="project-selector-"][data-testid$="-search"]) :is(input,[data-icon],.text-muted-foreground) {
+    color: var(--farm-title);
+}
+:is(.agy-overlay.surface-glass,[data-bottom-sheet-popup]) :is([data-testid="menu-search"],[data-testid^="project-selector-"][data-testid$="-search"]) input::placeholder {
+    color: var(--farm-title);
+    opacity: .9;
+}
+@media (forced-colors:active) {
+    body .agy-overlay.surface-glass:is([role="menu"],[role="listbox"]), body [data-bottom-sheet-popup]:has(.agy-overlay-item) {
+        background: Canvas !important;
+        color: CanvasText;
+        border: 2px solid CanvasText !important;
+        border-image: none !important;
+        box-shadow: none !important;
+    }
+    .agy-overlay.surface-glass .agy-overlay-item:focus-visible { outline: 2px solid Highlight; }
+}
+
+/* Native html popovers keep right-click and keyboard navigation above application drawers. */
+[data-modeldesk-host-menu], [data-modeldesk-host-toast] {
+    box-sizing: border-box;
+    position: fixed;
+    z-index: 2147483640;
+    inset: auto;
+    margin: 0;
+    font: 13px/1.4 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;
+    color: var(--farm-ink);
+    background: var(--farm-paper) var(--farm-page);
+    border: 6px solid transparent;
+    border-image: var(--farm-frame) 6 / 6px repeat;
+    border-radius: 0;
+    box-shadow: 3px 4px 0 color-mix(in srgb,var(--farm-beam) 75%,transparent);
+}
+[data-modeldesk-host-menu] {
+    min-width: min(216px,calc(100vw - 16px));
+    max-width: min(360px,calc(100vw - 16px));
+    overflow: auto;
+    padding: 3px;
+}
+[data-modeldesk-host-menu] [data-modeldesk-menu-label] {
+    display: block;
+    padding: 4px 8px;
+    margin-bottom: 3px;
+    color: var(--farm-title);
+    background: var(--farm-beam) var(--farm-wood);
+    font-size: 12px;
+    font-weight: 650;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+[data-modeldesk-host-menu] [role="menuitem"] {
+    display: block;
+    width: 100%;
+    padding: 5px 9px;
+    text-align: start;
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 0;
+    cursor: default;
+}
+[data-modeldesk-host-menu] [role="menuitem"]:is(:hover,:focus-visible) {
+    background: var(--farm-picked);
+    border-color: var(--farm-edge);
+    box-shadow: inset 2px 0 var(--farm-moss-light);
+    outline: none;
+}
+[data-modeldesk-host-menu] [role="separator"] {
+    height: 1px;
+    margin: 4px;
+    background: var(--farm-edge);
+}
+[data-modeldesk-host-toast] { right:16px; bottom:16px; max-width:calc(100vw - 32px); padding:8px 12px; pointer-events:none; }
+@media (max-width:700px), (max-height:560px) {
+    [data-testid="sidebar-navigation-items"]::before, [data-testid="settings-sidebar"]::before { height: 38px; }
+    [data-testid="home-greeting"]::before { width: min(460px,100%); height: auto; max-height:16vh; border-width:4px; }
+    [data-testid="agent-response"]:not(:empty) { padding: 5px 7px; border-width: 3px; }
+    [data-testid="agent-input-box"] .surface-composer { border-width:4px !important; }
+}
+@media (forced-colors:active) {
+    [data-testid="conversation-view"], [data-testid="agent-response"], [data-modeldesk-host-menu] { background: Canvas; color:CanvasText; }
+    [data-testid="sidebar-navigation-items"]::before, [data-testid="settings-sidebar"]::before,
+    [data-testid="home-greeting"]::before, [data-testid="agent-response"]::before { display:none; }
+    [data-modeldesk-host-menu] [role="menuitem"]:focus-visible { outline:2px solid Highlight; }
+}

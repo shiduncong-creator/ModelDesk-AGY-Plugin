@@ -1,0 +1,594 @@
+<!doctype html><meta charset="utf-8" /><title>ModelDesk farm skin artwork</title>
+<script src="../../src/office/pixel-office-scene.js"></script>
+<script src="../../src/office/pixel-office-sprites.js"></script>
+<pre id="assets"></pre>
+<script>
+  /* Development-only raster source. Run in a browser next to the original office atlas.
+   Only the exported PNGs are shipped to Antigravity. */
+  (async () => {
+    const files = {};
+    const canvas = (w, h) => {
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      return c;
+    };
+    const save = (key, c) => (files[key + '.png'] = c.toDataURL().split(',')[1]);
+    const seed = (value) => () => (value = (value * 1664525 + 1013904223) >>> 0) / 4294967296;
+    const images = {};
+    for (const name of ['gpt-dragon', 'dayu', 'gemini']) {
+      const sprite = ModelDeskOfficeSprites[name];
+      const img = new Image();
+      img.src = sprite.src;
+      await img.decode();
+      const c = canvas(sprite.w, sprite.h);
+      c.getContext('2d').drawImage(img, 0, 0, sprite.w, sprite.h, 0, 0, sprite.w, sprite.h);
+      images[name] = c;
+    }
+    save('silver-dragon', images['gpt-dragon']);
+    function brush(c) {
+      const g = c.getContext('2d');
+      g.imageSmoothingEnabled = false;
+      const rect = (x, y, w, h, col) => {
+        g.fillStyle = col;
+        g.fillRect(Math.floor(x), Math.floor(y), w, h);
+      };
+      // Horizontal integer scanlines keep all silhouettes on the original pixel grid.
+      function poly(points, col) {
+        for (let y = Math.min(...points.map((p) => p[1])); y < Math.max(...points.map((p) => p[1])); y++) {
+          const hits = [];
+          for (let i = 0; i < points.length; i++) {
+            const a = points[i],
+              b = points[(i + 1) % points.length];
+            if ((a[1] <= y && b[1] > y) || (b[1] <= y && a[1] > y))
+              hits.push(a[0] + ((y - a[1]) * (b[0] - a[0])) / (b[1] - a[1]));
+          }
+          hits.sort((a, b) => a - b);
+          for (let i = 0; i + 1 < hits.length; i += 2)
+            rect(Math.ceil(hits[i]), y, Math.max(1, Math.ceil(hits[i + 1]) - Math.ceil(hits[i])), 1, col);
+        }
+      }
+      return { g, rect, poly };
+    }
+    for (const night of [false, true]) {
+      const key = night ? 'night' : 'day',
+        rand = seed(91623),
+        pick = (a) => a[Math.floor(rand() * a.length)];
+      const c = canvas(480, 160),
+        { g, rect, poly } = brush(c);
+      const colors = night
+        ? {
+            sky: ['#26344f', '#303c59', '#3e4864', '#515772', '#696781', '#82788b'],
+            cloud: ['#54536f', '#756980', '#9b8192'],
+            far: '#64637e',
+            farLight: '#878096',
+            mid: '#485e76',
+            ridge: '#354e63',
+            wood: '#4b3c46',
+            dark: '#252a3b',
+            bark: '#695054',
+            grass: ['#3d6558', '#35594f', '#42735a', '#779074'],
+            hay: '#aa976a',
+            bed: '#68534e',
+            field: '#485a47',
+            leaf: ['#283e41', '#34514e', '#49635a', '#678074'],
+            river: ['#4b6981', '#657e93', '#91a2af'],
+            roof: ['#573e50', '#774e59', '#9b6970'],
+            wall: ['#746475', '#a28c87'],
+            sun: '#ffe5a3',
+            shine: '#a1a6ae',
+          }
+        : {
+            sky: ['#82b8d4', '#96c8dc', '#acd7df', '#c4e1df', '#dee9d7', '#f0edc9'],
+            cloud: ['#adced8', '#dfede5', '#fff4d8'],
+            far: '#81a9ac',
+            farLight: '#b9cbc0',
+            mid: '#719389',
+            ridge: '#527d72',
+            wood: '#62402e',
+            dark: '#3f4139',
+            bark: '#a07145',
+            grass: ['#8fa863', '#78985b', '#a5b570', '#cad285'],
+            hay: '#edc870',
+            bed: '#a36d47',
+            field: '#97a05b',
+            leaf: ['#466744', '#608849', '#80a651', '#a2bf65'],
+            river: ['#69a9ae', '#91c6c2', '#c5dfca'],
+            roof: ['#824e39', '#ae6344', '#d28d5a'],
+            wall: ['#bea071', '#ebd2a4'],
+            sun: '#fff2c0',
+            shine: '#d6e7c7',
+          };
+      const p = colors;
+      p.sky.forEach((color, i) => rect(0, i * 12, 480, 16, color));
+      function circle(x, y, r, col) {
+        for (let dy = -r; dy <= r; dy++) {
+          let w = Math.floor(Math.sqrt(r * r - dy * dy));
+          rect(x - w, y + dy, w * 2 + 1, 1, col);
+        }
+      }
+      if (night) {
+        for (let i = 0; i < 57; i++) {
+          let x = rand() * 480,
+            y = rand() * 53;
+          rect(x, y, i % 9 ? 1 : 3, 1, i % 3 ? p.cloud[2] : p.sun);
+        }
+        circle(363, 19, 9, p.sun);
+        circle(367, 15, 8, p.sky[1]);
+      } else {
+        circle(373, 26, 10, p.sun);
+        circle(373, 26, 7, '#fff7da');
+      }
+      function cloud(x, y, w) {
+        rect(x, y + 5, w, 3, p.cloud[0]);
+        rect(x + 3, y + 2, w - 8, 5, p.cloud[1]);
+        for (let i = 0; i < 4; i++) {
+          const z = x + 7 + (i * (w - 16)) / 4;
+          rect(z, y - 2 - (i % 2) * 2, 10, 7, p.cloud[1]);
+          rect(z + 1, y - 2 - (i % 2) * 2, 7, 2, p.cloud[2]);
+        }
+        rect(x + 7, y, w - 15, 3, p.cloud[2]);
+      }
+      cloud(15, 22, 45);
+      cloud(105, 11, 34);
+      cloud(220, 26, 51);
+      cloud(405, 12, 45);
+      const peaks = [
+        [0, 63],
+        [25, 48],
+        [47, 52],
+        [78, 31],
+        [95, 45],
+        [123, 26],
+        [138, 35],
+        [154, 25],
+        [170, 45],
+        [199, 34],
+        [224, 57],
+        [248, 40],
+        [267, 51],
+        [296, 31],
+        [321, 48],
+        [345, 35],
+        [384, 52],
+        [405, 35],
+        [429, 43],
+        [453, 27],
+        [480, 48],
+      ];
+      poly([...peaks, [480, 80], [0, 80]], p.far);
+      for (const k of [3, 5, 7, 9, 13, 15, 17, 19]) {
+        const [x, y] = peaks[k];
+        poly(
+          [
+            [x, y],
+            [x + 10, y + 10],
+            [x + 4, y + 7],
+            [x + 2, y + 9],
+            [x - 2, y + 5],
+            [x - 8, y + 9],
+          ],
+          p.farLight,
+        );
+      }
+      poly(
+        [
+          [0, 60],
+          [31, 53],
+          [59, 61],
+          [97, 48],
+          [124, 53],
+          [160, 42],
+          [195, 53],
+          [229, 49],
+          [260, 62],
+          [281, 57],
+          [310, 64],
+          [351, 48],
+          [383, 56],
+          [418, 45],
+          [449, 50],
+          [480, 44],
+          [480, 88],
+          [0, 88],
+        ],
+        p.mid,
+      );
+      for (let x = -2; x < 484; x += 3) {
+        let y = 65 + Math.sin(x / 26) * 3 + Math.cos(x / 16) * 3,
+          h = 4 + rand() * 5;
+        poly(
+          [
+            [x, y],
+            [x + 2, y - h],
+            [x + 4, y],
+            [x + 4, 83],
+            [x, 83],
+          ],
+          p.ridge,
+        );
+      }
+      rect(0, 75, 480, 85, p.grass[0]);
+      poly(
+        [
+          [0, 76],
+          [69, 77],
+          [126, 86],
+          [174, 86],
+          [118, 108],
+          [0, 114],
+        ],
+        p.field,
+      );
+      poly(
+        [
+          [480, 77],
+          [407, 77],
+          [374, 88],
+          [318, 92],
+          [348, 105],
+          [480, 100],
+        ],
+        p.grass[2],
+      );
+      for (let i = 0; i < 1700; i++) {
+        let x = rand() * 480,
+          y = 76 + rand() * 82;
+        rect(x, y, rand() < 0.8 ? 1 : 3, 1, pick([p.grass[1], p.grass[2], p.grass[3]]));
+      }
+      const river = [
+        [274, 75],
+        [298, 75],
+        [263, 83],
+        [292, 92],
+        [284, 98],
+        [256, 102],
+        [223, 112],
+        [233, 119],
+        [275, 130],
+        [287, 139],
+        [266, 149],
+        [233, 160],
+        [140, 160],
+        [173, 147],
+        [218, 142],
+        [225, 137],
+        [199, 130],
+        [175, 122],
+        [165, 116],
+        [185, 107],
+        [232, 97],
+        [255, 94],
+        [245, 90],
+        [229, 86],
+        [241, 81],
+      ];
+      poly(
+        river.map(([x, y]) => [x, y + 3]),
+        p.grass[1],
+      );
+      poly(river, p.river[0]);
+      // Light stays inside water pixels, including where the river meanders.
+      const water = g.getImageData(0, 0, 480, 160).data;
+      const waterRGB = p.river[0]
+        .slice(1)
+        .match(/../g)
+        .map((x) => parseInt(x, 16));
+      for (let i = 0; i < 380; i++) {
+        let x = (rand() * 480) | 0,
+          y = (78 + rand() * 81) | 0,
+          a = (y * 480 + x) * 4;
+        if (waterRGB.every((v, k) => v === water[a + k]))
+          rect(x, y, 1 + ((rand() * 6) | 0), 1, pick(p.river));
+      }
+      function pine(x, y, h) {
+        const w = Math.max(3, Math.round(h * 0.28));
+        rect(x - 1, y - 5, 3, 6, p.wood);
+        for (let i = 0; i < 3; i++) {
+          const t = y - h + i * h * 0.22,
+            ww = w * (0.5 + i * 0.24),
+            b = t + h * 0.48;
+          poly(
+            [
+              [x, t],
+              [x + ww, b],
+              [x + ww * 0.35, b - 2],
+              [x + 1, b + 1],
+              [x - ww * 0.45, b - 1],
+              [x - ww, b],
+            ],
+            p.leaf[0],
+          );
+          poly(
+            [
+              [x, t],
+              [x + 1, b - 2],
+              [x - ww * 0.31, b - 4],
+              [x - ww * 0.79, b - 1],
+            ],
+            p.leaf[i === 0 ? 2 : 1],
+          );
+        }
+      }
+      function orchard(x, y, r) {
+        rect(x - 1, y - 6, 3, 7, p.wood);
+        circle(x, (y - r * 0.95) | 0, r, p.leaf[0]);
+        circle(x - 2, y - r - 1, r - 1, p.leaf[1]);
+        circle(x - 3, y - r - 2, r - 3, p.leaf[2]);
+        for (let j = 0; j < 7; j++)
+          rect(x - r + 1 + rand() * (r * 1.6), y - r * 1.8 + rand() * (r * 1.2), 2, 1, p.leaf[3]);
+        for (let j = 0; j < 3; j++)
+          rect(
+            x - r * 0.7 + rand() * r * 1.4,
+            y - r * 1.4 + rand() * r * 0.8,
+            2,
+            2,
+            night ? '#aa776d' : '#d98655',
+          );
+      }
+      for (let x = 0; x < 480; x += 5 + rand() * 6) {
+        if (x > 201 && x < 334) continue;
+        pine(x, 78 + rand() * 4, 7 + rand() * 8);
+      }
+      function house(x, y, w, h) {
+        rect(x - 2, y + 1, w + 9, 2, p.grass[1]);
+        rect(x, y - h, w, h, p.wood);
+        rect(x + 2, y - h + 2, w - 4, h - 2, p.wall[1]);
+        rect(x + w - 7, y - h + 2, 5, h - 2, p.wall[0]);
+        rect(x + 2, y - 2, w - 4, 2, p.wall[0]);
+        rect(x + Math.floor(w * 0.5), y - 8, 5, 8, p.wood);
+        for (const wx of [x + 3, x + w - 10]) {
+          rect(wx, y - 9, 5, 5, p.wood);
+          rect(wx + 1, y - 8, 3, 3, night ? p.sun : '#77979a');
+          rect(wx + 2, y - 8, 1, 3, p.bark);
+        }
+        const top = y - h - 7;
+        poly(
+          [
+            [x - 3, y - h + 3],
+            [x + 3, top],
+            [x + w - 5, top],
+            [x + w + 3, y - h + 3],
+          ],
+          p.roof[0],
+        );
+        poly(
+          [
+            [x - 2, y - h + 1],
+            [x + 3, top + 1],
+            [x + w - 6, top + 1],
+            [x + w + 1, y - h + 1],
+          ],
+          p.roof[1],
+        );
+        for (let yy = top + 2; yy <= y - h; yy += 3) {
+          for (let xx = x + 4 + (yy % 2); xx < x + w - 5; xx += 5) rect(xx, yy, 3, 1, p.roof[2]);
+        }
+        rect(x + w - 9, top - 5, 3, 7, p.wood);
+        rect(x + w - 10, top - 5, 5, 2, p.wall[0]);
+      }
+      function beds(x, y, rows, cols) {
+        for (let j = 0; j < rows; j++) {
+          let xx = x - j * 3,
+            yy = y + j * 3;
+          rect(xx, yy, cols * 4 + 3, 2, p.bed);
+          rect(xx, yy + 2, cols * 4 + 3, 1, p.grass[1]);
+          for (let k = 0; k < cols; k++) {
+            rect(xx + 2 + k * 4, yy - 1, 2, 2, p.leaf[1]);
+            rect(xx + 2 + k * 4, yy - 2, 1, 2, p.hay);
+          }
+        }
+      }
+      function fence(x, y, len) {
+        rect(x, y - 4, len, 2, p.bark);
+        rect(x, y - 1, len, 1, p.wood);
+        for (let k = 0; k <= len; k += 8) {
+          rect(x + k, y - 6, 2, 7, p.wood);
+          rect(x + k, y - 6, 1, 4, p.hay);
+        }
+      }
+      beds(48, 85, 5, 10);
+      beds(103, 91, 6, 11);
+      beds(356, 105, 6, 15);
+      beds(385, 128, 7, 16);
+      house(57, 91, 20, 10);
+      house(83, 88, 18, 9);
+      house(320, 99, 30, 17);
+      house(350, 94, 21, 12);
+      // Windmill, timber sails and a broad walking path to the bridge.
+      poly(
+        [
+          [289, 101],
+          [294, 79],
+          [301, 79],
+          [307, 101],
+        ],
+        p.wood,
+      );
+      poly(
+        [
+          [291, 100],
+          [295, 80],
+          [300, 80],
+          [305, 100],
+        ],
+        p.wall[1],
+      );
+      poly(
+        [
+          [290, 81],
+          [297, 72],
+          [305, 81],
+        ],
+        p.roof[1],
+      );
+      rect(295, 94, 5, 7, p.wood);
+      for (const [dx, dy] of [
+        [1, 1],
+        [1, -1],
+        [-1, 1],
+        [-1, -1],
+      ]) {
+        for (let k = 1; k < 11; k++) {
+          rect(297 + dx * k, 84 + dy * k, 1, 2, p.wood);
+          if (k > 4 && k < 10) rect(297 + dx * k - 1, 84 + dy * k, 3, 2, p.wall[1]);
+        }
+      }
+      rect(296, 83, 3, 3, p.roof[0]);
+      fence(309, 108, 46);
+      fence(75, 105, 42);
+      fence(349, 145, 50);
+      for (let i = 0; i < 9; i++) orchard(23 + (i % 3) * 12 + ((i / 3) | 0) * 3, 103 + ((i / 3) | 0) * 6, 5);
+      for (let i = 0; i < 12; i++) orchard(388 + (i % 5) * 13, 86 + ((i / 5) | 0) * 7, 5);
+      poly(
+        [
+          [306, 103],
+          [323, 102],
+          [336, 105],
+          [305, 107],
+          [271, 113],
+          [236, 114],
+          [235, 110],
+          [264, 108],
+        ],
+        p.hay,
+      );
+      for (let x = 195; x < 243; x += 3) {
+        rect(x, 109, 3, 7, p.wood);
+        rect(x, 109, 2, 6, p.bark);
+      }
+      fence(195, 110, 48);
+      for (let i = 0; i < 6; i++) pine(454 + i * 5, 114 + rand() * 6, 18 + rand() * 10);
+      for (const [x, y, h] of [
+        [1, 136, 35],
+        [14, 149, 31],
+        [459, 160, 36],
+        [475, 158, 40],
+        [38, 161, 27],
+        [108, 142, 17],
+      ])
+        pine(x, y, h);
+      for (let i = 0; i < 53; i++) {
+        let x = rand() * 142,
+          y = 116 + rand() * 43;
+        rect(x, y, 1, 3, p.leaf[1]);
+        rect(x - 1, y, 3, 1, pick([p.hay, p.wall[1], night ? '#ac7895' : '#d88d8b']));
+      }
+      for (let i = 0; i < 11; i++) {
+        let y = 124 + rand() * 35;
+        rect(305 + i * 5, y, 1, 3, p.leaf[1]);
+        rect(304 + i * 5, y, 3, 1, p.hay);
+      }
+      save('valley-' + key, c);
+      // Dissolve the skyline into the ledger at the top of the conversation gutter.
+      const field = canvas(480, 160),
+        fg = field.getContext('2d');
+      fg.drawImage(c, 0, 0);
+      const fade = fg.getImageData(0, 0, 480, 26),
+        bayer = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+      for (let y = 0; y < 26; y++)
+        for (let x = 0; x < 480; x++) {
+          if ((y + 0.5) / 26 < (bayer[(y % 4) * 4 + (x % 4)] + 0.5) / 16)
+            fade.data[(y * 480 + x) * 4 + 3] = 0;
+        }
+      fg.putImageData(fade, 0, 0);
+      save('field-' + key, field);
+      const room = canvas(640, 360),
+        palette = ModelDeskOfficeScene.PALETTES[key];
+      const scene = ModelDeskOfficeScene,
+        ctx = room.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      scene.buildBackground(room, palette);
+      scene.drawSkyDynamic(ctx, palette, 0, true);
+      scene.drawHearthAndCat(ctx, palette, 0, true, {});
+      scene.drawPondDynamic(ctx, palette, 0, true, {});
+      scene.drawTreeCanopy(ctx, palette, 0, true, 'breeze', {});
+      function character(context, sprite, pose) {
+        const image = images[sprite],
+          zoom = pose.zoom || 1;
+        context.drawImage(
+          image,
+          Math.round(pose.x - (image.width * zoom) / 2),
+          Math.round(pose.foot - image.height * zoom),
+          Math.round(image.width * zoom),
+          Math.round(image.height * zoom),
+        );
+      }
+      scene.drawLeadStation(
+        ctx,
+        palette,
+        { sprite: 'gpt-dragon', status: 'idle' },
+        { seated: true, x: 246, foot: 183, zoom: 1.3 },
+        0,
+        true,
+        0,
+        null,
+        {},
+        character,
+      );
+      ['gemini', 'gpt-dragon', 'dayu'].forEach((sprite, i) => {
+        const seat = { ...scene.LAYOUT.desks3[i], sprite, status: 'idle' };
+        scene.drawWorkerDesk(
+          ctx,
+          palette,
+          seat,
+          { seated: true, x: seat.x - 8, foot: seat.deskY - 3 },
+          0,
+          true,
+          {},
+          character,
+        );
+      });
+      const vignette = canvas(224, 86),
+        vg = vignette.getContext('2d');
+      vg.imageSmoothingEnabled = false;
+      vg.drawImage(room, 53, 66, 474, 182, 0, 0, 224, 86);
+      save('workshop-' + key, vignette);
+      const tile = canvas(96, 32),
+        b = brush(tile);
+      const wood = night
+        ? ['#3f323a', '#49383d', '#554147', '#655054', '#2d2933']
+        : ['#875631', '#956239', '#a36c41', '#b9814e', '#71462e'];
+      b.rect(0, 0, 96, 32, wood[1]);
+      for (let y = 0; y < 32; y += 8) {
+        b.rect(0, y, 96, 1, wood[4]);
+        b.rect(0, y + 1, 96, 1, wood[3]);
+        b.rect(0, y + 7, 96, 1, wood[0]);
+      }
+      for (let i = 0; i < 55; i++) {
+        let x = (rand() * 96) | 0,
+          y = (rand() * 32) | 0;
+        if (y % 8 > 2 && y % 8 < 7) b.rect(x, y, (2 + rand() * 15) | 0, 1, pick([wood[0], wood[2]]));
+      }
+      save('timber-' + key, tile);
+      const parchment = canvas(64, 64),
+        a = brush(parchment);
+      const paper = night
+        ? ['#302d37', '#332f39', '#2d2b34', '#38333c']
+        : ['#f8f0db', '#ede4cd', '#fff8e6', '#e4d8bb'];
+      a.rect(0, 0, 64, 64, paper[0]);
+      for (let i = 0; i < 220; i++) a.rect(rand() * 64, rand() * 64, (1 + rand() * 2) | 0, 1, pick(paper));
+      save('paper-' + key, parchment);
+      const frame = canvas(24, 24),
+        f = brush(frame);
+      const strip = night
+        ? ['#211f28', '#5b434a', '#806458', '#ac905d', '#68504f', '#3f3541']
+        : ['#503526', '#98643e', '#c38a54', '#f2c380', '#ad7747', '#6c4730'];
+      for (let i = 0; i < 6; i++) {
+        const m = 24 - i * 2;
+        f.rect(i, i, m, 1, strip[i]);
+        f.rect(i, 23 - i, m, 1, strip[i]);
+        f.rect(i, i, 1, m, strip[i]);
+        f.rect(23 - i, i, 1, m, strip[i]);
+      }
+      for (const x of [0, 17])
+        for (const y of [0, 17]) {
+          f.rect(x + 1, y + 1, 5, 5, strip[0]);
+          f.rect(x + 2, y + 2, 3, 3, strip[3]);
+          f.rect(x + 3, y + 3, 2, 2, strip[2]);
+        }
+      save('frame-' + key, frame);
+    }
+    document.getElementById('assets').textContent = JSON.stringify(files);
+  })().catch((error) => (document.getElementById('assets').textContent = String(error.stack)));
+</script>

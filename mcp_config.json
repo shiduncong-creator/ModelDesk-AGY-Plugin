@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "modeldesk_workbench": {
+      "command": "bash",
+      "args": ["${PLUGIN_ROOT}/scripts/run-server.sh", "--data-dir", "${PLUGIN_DATA}"]
+    }
+  }
+}

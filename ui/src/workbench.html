@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data: blob:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<title>ModelDesk 工作台</title>
+<!-- INLINE_STYLE -->
+</head>
+<body data-office-profile="workbench">
+<div id="hud">
+  <header class="hud-header">
+    <div class="hud-bar">
+      <button id="mp-toggle" type="button" aria-label="上下文属性" aria-expanded="false" aria-controls="attributes">
+        <canvas id="mp-potion" width="22" height="28" aria-hidden="true"></canvas>
+        <b>MP</b><span class="mp-meter" aria-hidden="true"><i id="mp-fill"></i></span><strong id="mp-value">—</strong>
+      </button>
+      <span id="cache-pill" class="badge" title="Cache 命中率"><span class="cache-prefix">缓</span><span id="cache-value">—</span></span>
+      <button id="compact" type="button" title="发送或复制 /compact">/compact</button>
+      <button id="api-toggle" type="button" aria-label="独立 API" aria-expanded="false" aria-controls="api-bar" title="独立 API">🔑</button>
+      <button id="theme-toggle" type="button" aria-label="切换 HUD 主题" title="HUD 主题">☀</button>
+      <button id="refresh" type="button" aria-label="刷新工作台" title="刷新工作台">↻</button>
+    </div>
+    <section id="attributes" class="hud-float" aria-label="角色属性" hidden>
+      <header class="section-head"><h2>角色属性</h2><button id="attributes-close" type="button">关闭</button></header>
+      <div class="context-controls">
+        <label id="context-session-label">本地会话<select id="context-session"></select></label>
+        <button id="quota-refresh" type="button">同步额度</button>
+      </div>
+      <div id="context-data"></div>
+      <form id="window-form" class="actions">
+        <label>自定义窗口<input id="window-size" type="number" min="1" max="20000000" placeholder="Token" required></label>
+        <button type="submit">应用</button><button id="window-auto" type="button">恢复自动</button>
+      </form>
+    </section>
+    <form id="api-bar" aria-label="独立翻译 API" hidden>
+      <div class="api-line">
+        <select id="translation-preset" aria-label="API 预设" disabled><option value="">等待读取 API 配置</option></select>
+        <input id="api-key" type="password" aria-label="API Key" placeholder="API Key" autocomplete="off" spellcheck="false" disabled>
+        <button id="api-clear" type="button" hidden>清除</button>
+        <button id="api-save" type="submit" disabled>保存</button><button id="api-test" type="button" disabled>测通</button>
+        <label class="check" title="使用所选服务翻译助手回复和思考摘要"><input id="auto-translate" type="checkbox">自动翻译</label>
+      </div>
+      <div id="api-custom" class="api-line" hidden>
+        <input id="api-base" type="text" aria-label="Base URL" placeholder="Base URL" spellcheck="false">
+        <input id="api-model" type="text" aria-label="Model" placeholder="Model" spellcheck="false">
+      </div>
+      <output id="api-feedback" hidden aria-live="polite"></output>
+    </form>
+  </header>
+  <div id="connection" role="status" hidden>
+    <span id="connection-status"></span><button id="connection-retry" type="button">重试连接</button>
+  </div>
+  <main id="layout" data-view="thoughts">
+    <aside id="projects-rail" aria-label="项目与最近会话栏">
+      <header class="section-head"><h2>项目与最近会话</h2><button id="rail-toggle" type="button" aria-controls="rail-content" aria-expanded="true" title="折叠项目栏">‹</button></header>
+      <div id="rail-content" class="pane-scroll"><h3>项目</h3><div id="projects"></div><h3>最近会话</h3><div id="sessions"></div></div>
+    </aside>
+    <section id="pixel-office" class="pixel-office" aria-label="像素工坊">
+      <div class="office-scene">
+        <div id="office-room" class="office-room">
+          <canvas id="office-room-canvas" width="640" height="360" aria-label="像素工坊木屋和庭院"></canvas>
+          <div class="scene-header"><span id="office-status">像素工坊 · 连接中</span><button id="scene-toggle" type="button" aria-controls="scene-tools" aria-expanded="false">场景</button></div>
+          <div id="office-room-labels" class="office-room-labels"></div>
+          <div id="squad" aria-label="小队工位"></div>
+        </div>
+        <div id="scene-tools" hidden></div>
+      </div>
+    </section>
+    <nav id="view-switch" aria-label="卷轴与产物">
+      <button id="view-thoughts" type="button" aria-controls="thought-scroll" aria-pressed="true">📜 翻译卷轴</button>
+      <button id="view-files" type="button" aria-controls="panel-files" aria-pressed="false">🎒 产物栏 <span id="file-count"></span></button>
+      <button id="bilingual" type="button" aria-controls="thought-scroll" aria-pressed="false">纯中文</button>
+    </nav>
+    <section id="panel-files" aria-label="本轮产物栏">
+      <header class="section-head pane-head"><h2>🎒 本轮产物栏 <span id="file-total" class="muted"></span></h2>
+        <input id="file-search" aria-label="搜索产物" type="search" placeholder="搜索文件名或路径"></header>
+      <div class="pane-scroll"><div id="files"></div><button id="more-files" type="button" hidden>加载更多</button></div>
+    </section>
+    <section id="thought-scroll" aria-label="实时翻译卷轴">
+      <header class="section-head pane-head"><h2>📜 实时翻译卷轴</h2><span id="thought-status" class="muted"><button id="scroll-bilingual" type="button" aria-pressed="false">纯中文</button></span></header>
+      <div id="thoughts" class="pane-scroll" tabindex="0"><p class="empty">等待此对话出现助手回复或思考摘要。</p></div>
+    </section>
+  </main>
+</div>
+<div id="context-menu" class="menu" role="menu" aria-label="产物操作" hidden></div>
+<dialog id="detail" aria-labelledby="dialog-title"><div id="dialog-body"></div><p id="dialog-notice" role="status" hidden></p></dialog>
+<p id="notice" role="status" hidden></p>
+<!-- INLINE_SCRIPT -->
+</body>
+</html>
