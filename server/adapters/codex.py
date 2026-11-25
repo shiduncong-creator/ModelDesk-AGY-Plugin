@@ -1,6 +1,10 @@
 import subprocess
 
+from ..deliverables import git_root
 from .base import CLIAdapter
+
+DIRECTORY_REJECTION = "Not inside a trusted directory and --skip-git-repo-check was not specified."
+DIRECTORY_ERROR = "Codex 启动失败：CLI 拒绝了当前项目目录。请检查 Codex CLI 版本及其普通文件夹支持。"
 
 
 class Codex(CLIAdapter):
@@ -25,6 +29,8 @@ class Codex(CLIAdapter):
     def argv(self, task, prompt, session):
         sandbox = "workspace-write" if task["write"] else "read-only"
         argv = [self.required_executable(), "exec", "--json", "-C", task["cwd"], "-s", sandbox]
+        if git_root(task["cwd"]) is None:
+            argv.append("--skip-git-repo-check")
         if task.get("model"):
             argv += ["-m", task["model"]]
         if session:
@@ -39,6 +45,8 @@ class Codex(CLIAdapter):
     def declared_output(self, item):
         nested = item.get("item") or {}
         if isinstance(nested, dict) and nested.get("type") == "file_change":
+            if item.get("type") != "item.completed" or nested.get("status") == "failed":
+                return []
             return [c["path"] for c in (nested.get("changes") or [])
                     if isinstance(c, dict) and isinstance(c.get("path"), str)]
         return super().declared_output(item)

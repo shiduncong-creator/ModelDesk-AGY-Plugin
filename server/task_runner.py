@@ -14,7 +14,7 @@ import threading
 import time
 
 from .adapters.base import pid_identity, valid_session
-from .adapters.codex import Codex
+from .adapters.codex import Codex, DIRECTORY_ERROR, DIRECTORY_REJECTION
 from .adapters.gemini import Gemini
 from .adapters.qoder import Qoder, recovery_guard, request_identity
 from .deliverables import Deliverables, git, git_root, git_status
@@ -65,7 +65,7 @@ def workspace_snapshot(cwd, declared=(), private_root=None, compare_head=None):
 
 def changes_since(before, after):
     return sorted(path for path in before.keys() | after.keys()
-                  if path not in before or path not in after or before[path] != after[path])
+                  if before.get(path) != after.get(path))
 
 
 def tail(file, limit=50, before=None):
@@ -128,14 +128,31 @@ class Runner:
             raise ValueError("任务不存在")
         return folder
 
+    def read_record(self, folder):
+        row = read_json(folder / "task.json", {}) or {}
+        if (row.get("engine") == "codex" and row.get("status") == "recovery_pending" and
+                row.get("recovery_reason") == "cli_interrupted" and row.get("attempt") == 1 and
+                row.get("exit_code") == 1 and not row.get("native_session_id") and
+                not row.get("observed_files")):
+            # Old records copied every declared path into changed_files even when
+            # the CLI exited at its directory check. Keep ambiguous records intact.
+            baseline = row.get("baseline", {})
+            interrupted = row.get("interrupted_files", {})
+            declared = set(row.get("declared_files", []))
+            if (declared == set(row.get("changed_files", [])) == interrupted.keys() and
+                    all(baseline.get(name) == stamp for name, stamp in interrupted.items()) and
+                    DIRECTORY_REJECTION in tail(folder / "output.log", 4)["text"].splitlines()):
+                row.update(status="failed", changed_files=[], recovery_reason=None, error=DIRECTORY_ERROR)
+        return row
+
     def read(self, task_id):
-        return read_json(self.folder(task_id) / "task.json", {}) or {}
+        return self.read_record(self.folder(task_id))
 
     def rows(self):
         result = []
         for folder in self.store.tasks.iterdir():
             if not folder.is_symlink() and ID_PATTERN.fullmatch(folder.name):
-                if row := read_json(folder / "task.json"):
+                if row := self.read_record(folder):
                     result.append(row)
         return sorted(result, key=lambda row: row["updated_at"], reverse=True)
 
@@ -227,7 +244,11 @@ class Runner:
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
         except OSError:
-            self.interrupt(folder, row, "worker_start_failed")
+            error = "任务启动失败：无法启动 ModelDesk 后台执行进程。"
+            if row["attempt"] == 1:
+                self.fail_start(folder, row, error)
+            else:
+                self.interrupt(folder, row, "worker_start_failed", startup_error=error)
             return
         self.children[row["id"]] = proc
         self.persist(folder, updated(row, worker_pid=proc.pid, worker_identity=pid_identity(proc.pid)))
@@ -236,14 +257,21 @@ class Runner:
         return [sys.executable, "-m", "server.task_runner", "--worker", row["id"], str(row["attempt"]),
                 str(self.store.root)]
 
-    def interrupt(self, folder, row, reason):
+    def fail_start(self, folder, row, error):
+        self.persist(folder, updated(row, status="failed", changed_files=[], error=error,
+                                     recovery_reason=None, finished_at=time.time()))
+
+    def interrupt(self, folder, row, reason, *, startup_error=None):
         head, stamps = workspace_snapshot(row["cwd"], row["declared_files"] + row.get("observed_files", []),
                                           self.store.root, row["git_head_before"])
-        changed = changes_since(row["baseline"], stamps)
-        changed = sorted(set(changed + row["declared_files"] + row.get("observed_files", [])))
+        changed = sorted(set(changes_since(row["baseline"], stamps)) | set(row.get("observed_files", [])))
+        if startup_error and not changed and not row.get("native_session_id"):
+            self.fail_start(folder, row, startup_error)
+            return
+        watched = set(changed) | set(row["declared_files"])
         self.persist(folder, updated(row, status="recovery_pending", changed_files=changed,
                                      recovery_reason=reason, interrupted_head=head,
-                                     interrupted_files={name: stamps.get(name) for name in changed}))
+                                     interrupted_files={name: stamps.get(name) for name in sorted(watched)}))
 
     def conflicts(self, row):
         head, current = workspace_snapshot(row["cwd"], row["declared_files"] + row["changed_files"], self.store.root)
@@ -398,6 +426,7 @@ def work(runner, task_id, attempt):
     done = threading.Event()
     seen_error = False
     code = None
+    startup_error = None
 
     def monitor():
         deadline = time.monotonic() + row["timeout"]
@@ -437,9 +466,13 @@ def work(runner, task_id, attempt):
         with (folder / "output.log").open("ab", buffering=0) as output, \
                 (folder / "events.jsonl").open("ab", buffering=0) as events, handle.process.stdout as stream:
             def lines():
+                nonlocal startup_error
                 for raw in iter(lambda: stream.readline(2 * 1024 * 1024), b""):
                     output.write(raw)
-                    yield raw.decode("utf-8", "replace")
+                    line = raw.decode("utf-8", "replace")
+                    if row["engine"] == "codex" and line.strip() == DIRECTORY_REJECTION:
+                        startup_error = DIRECTORY_ERROR
+                    yield line
 
             for item, session in adapter.events(row, lines()):
                 seen_error = seen_error or adapter.outcome_error(item)
@@ -472,6 +505,8 @@ def work(runner, task_id, attempt):
         if handle and adapter:
             adapter.cancel(row, handle.process)
         message = str(error) if isinstance(error, ValueError) else "CLI 启动或输出读取失败"
+        if handle is None:
+            startup_error = f"CLI 启动失败：{message}"
         with (folder / "output.log").open("ab") as output:
             output.write((message + "\n").encode())
         seen_error = True
@@ -488,10 +523,9 @@ def work(runner, task_id, attempt):
             if reason == "cancelled":
                 runner.persist(folder, updated(current, status="cancelled"))
             elif reason or code != 0 or seen_error:
-                current["error"] = "CLI 执行中断或没有成功回执"
-                if current["engine"] == "codex" and code and not reason and "Not inside a trusted directory" in tail(folder / "output.log", 4)["text"]:
-                    current["error"] = "Codex 拒绝了当前工作目录。请在派单时选择已登记项目中的 Git 仓库，或选择你已在 Codex 中信任的目录。"
-                runner.interrupt(folder, current, reason or "cli_interrupted")
+                current["error"] = startup_error or "CLI 执行中断或没有成功回执"
+                runner.interrupt(folder, current, reason or "cli_interrupted",
+                                 startup_error=startup_error if not reason else None)
             else:
                 _, after = workspace_snapshot(current["cwd"], current["declared_files"] + current["observed_files"],
                                               runner.store.root, current["git_head_before"])

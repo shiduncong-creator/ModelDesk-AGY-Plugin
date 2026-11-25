@@ -1,14 +1,19 @@
 import json
 import os
+from pathlib import Path
 import signal
+import subprocess
+import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
-from server.adapters.codex import Codex
+from server.adapters.base import RunningHandle
+from server.adapters.codex import Codex, DIRECTORY_REJECTION
 from server.adapters.gemini import Gemini
 from server.adapters.qoder import Qoder, recovery_guard, request_identity
 from server.storage import Store
-from server.task_runner import Runner, tail
+from server.task_runner import Runner, tail, work
 
 from .support import fake_environment, git, poll, register, sandbox
 
@@ -52,8 +57,11 @@ class TaskTest(unittest.TestCase):
         return self.runner.dispatch("gemini", prompt, transport="cli", **kwargs)
 
     def test_no_native_session_requires_explicit_checkpoint(self):
-        task = self.dispatch("crash-early", declared_files=["partial.txt"])
+        task = self.dispatch("crash-early", declared_files=["partial.txt", "baseline.txt", "never-created.txt"])
         row = self.wait_for(task, "recovery_pending")
+        self.assertEqual(row["changed_files"], ["calls.txt", "partial.txt"])
+        self.assertIn("baseline.txt", row["interrupted_files"])
+        self.assertIn("never-created.txt", row["interrupted_files"])
         new_runner = Runner(self.store)
         new_runner.reconcile()
         self.assertIsNone(row["native_session_id"])
@@ -76,6 +84,40 @@ class TaskTest(unittest.TestCase):
         self.assertIn("partial.txt", sent)
         self.assertIn("crashed before native session", sent)
         self.assertEqual(new_runner.review(row["id"], True)["status"], "accepted")
+
+    def test_codex_directory_rejection_fails_before_resume(self):
+        def queue_without_worker(folder, row):
+            row.update(attempt=1, stop_reason=None)
+            self.runner.persist(folder, row)
+
+        with patch.object(self.runner, "launch", side_effect=queue_without_worker):
+            task = self.runner.dispatch("codex", "start", declared_files=["baseline.txt", "never-created.txt"])
+        adapter = self.runner.adapters["codex"]
+        command = [sys.executable, "-c", f"print({DIRECTORY_REJECTION!r}); raise SystemExit(1)"]
+        with subprocess.Popen(command, stdout=subprocess.PIPE) as proc, \
+                patch.object(adapter, "start", return_value=RunningHandle(proc)), \
+                patch("server.task_runner.signal.signal"):
+            work(self.runner, task["id"], task["attempt"])
+        failed = self.runner.logs(task["id"])["task"]
+        self.assertEqual(failed["status"], "failed")
+        self.assertIn("CLI 拒绝了当前项目目录", failed["error"])
+        self.assertEqual(failed["changed_files"], [])
+        with self.assertRaisesRegex(ValueError, "不处于可续接状态"):
+            self.runner.resume(task["id"], "checkpoint", confirmed=True)
+
+        # Old task records may still contain this exact startup error and
+        # the declared-file list incorrectly stored as changes.
+        original = self.runner.read(task["id"])
+        folder = self.runner.folder(task["id"])
+        original.update(status="recovery_pending", recovery_reason="cli_interrupted", attempt=1,
+                        changed_files=task["declared_files"],
+                        interrupted_files={name: task["baseline"][name] for name in task["declared_files"]})
+        self.runner.persist(folder, original)
+        self.assertEqual(self.runner.rows()[0]["status"], "failed")
+        self.assertEqual(self.runner.logs(task["id"])["task"]["changed_files"], [])
+        original["interrupted_files"]["baseline.txt"] = [1, 2, 3, 4, 5]
+        self.runner.persist(folder, original)
+        self.assertEqual(self.runner.read(task["id"])["status"], "recovery_pending")
 
     def test_native_resume_after_crash_reuses_exact_id(self):
         task = self.dispatch("crash-with-session", declared_files=["partial.txt"])
@@ -160,11 +202,31 @@ class TaskTest(unittest.TestCase):
 class AdapterTest(unittest.TestCase):
     def test_codex_sandbox_and_thread_parser(self):
         adapter = Codex()
-        with patch.object(adapter, "required_executable", return_value="codex"):
+        with patch.object(adapter, "required_executable", return_value="codex"), \
+                patch("server.adapters.codex.git_root", return_value=Path("/some/project")):
             command = adapter.argv({"cwd": "/some/project", "write": True}, "--a prompt", "id-native")
         self.assertEqual(command, ["codex", "exec", "--json", "-C", "/some/project", "-s",
                                    "workspace-write", "resume", "id-native", "--", "--a prompt"])
         self.assertEqual(adapter.event('{"type":"thread.started","thread_id":"id-native"}')[1], "id-native")
+
+    def test_codex_plain_folder_supports_both_sandboxes_without_git_init(self):
+        adapter = Codex()
+        with tempfile.TemporaryDirectory() as directory, patch.object(adapter, "required_executable", return_value="codex"):
+            for write, sandbox_mode in ((False, "read-only"), (True, "workspace-write")):
+                for session in (None, "id-native"):
+                    command = adapter.argv({"cwd": directory, "write": write}, "prompt", session)
+                    self.assertEqual(command[command.index("-s") + 1], sandbox_mode)
+                    self.assertIn("--skip-git-repo-check", command[:command.index("--")])
+            self.assertFalse((Path(directory) / ".git").exists())
+
+    def test_codex_reports_completed_file_change_events(self):
+        adapter = Codex()
+        item = {"type": "file_change", "changes": [{"path": "written.txt"}], "status": "in_progress"}
+        self.assertEqual(adapter.declared_output({"type": "item.started", "item": item}), [])
+        item["status"] = "failed"
+        self.assertEqual(adapter.declared_output({"type": "item.completed", "item": item}), [])
+        item["status"] = "completed"
+        self.assertEqual(adapter.declared_output({"type": "item.completed", "item": item}), ["written.txt"])
 
     def test_qoder_original_guard_and_both_transports(self):
         adapter = Qoder()

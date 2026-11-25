@@ -2,14 +2,16 @@
 
 基于 Antigravity 2.35.0 的独立 macOS 桌面，在原生项目列表和聊天窗口中集成像素工坊、派单状态、实时翻译、MP 上下文、HP 账户额度与文件右键操作。源码中的 ModelDesk 是插件和数据使用的内部名称。
 
-## 下载 2.35.0
+## 下载 2.35.1
+
+2.35.1 支持向普通项目文件夹派发 Codex 读写任务。启动失败会显示具体原因，文件列表只记录检测到的变更。宿主仍为 Antigravity 2.35.0。
 
 | 你的设备和用途 | 下载 | 拿到后怎么用 |
 | --- | --- | --- |
-| **Mac · Apple Silicon（M 系列）**，macOS 13 或更新，直接安装使用 | **[下载 macOS 安装包（DMG）](https://github.com/shiduncong-creator/ModelDesk-AGY-Plugin/releases/download/v2.35.0/ModelDesk-2.35.0-macOS-Apple-Silicon.dmg)** | 打开镜像，双击「安装吉米奈的工作台」，完成后从 Dock 启动。 |
-| **Windows**，在本机用 AI 接手移植 | **[下载 Windows AI 接手包（ZIP）](https://github.com/shiduncong-creator/ModelDesk-AGY-Plugin/releases/download/v2.35.0/ModelDesk-2.35.0-Windows-AI-Handoff.zip)** | 全部解压，用编程 AI 打开 `源码` 文件夹，复制顶层《Windows-AI部署指引.md》里的提示词。包内含源码和指引，Windows 安装器仍待移植。 |
+| **Mac · Apple Silicon（M 系列）**，macOS 13 或更新，直接安装使用 | **[下载 macOS 安装包（DMG）](https://github.com/shiduncong-creator/ModelDesk-AGY-Plugin/releases/download/v2.35.1/ModelDesk-2.35.1-macOS-Apple-Silicon.dmg)** | 打开镜像，双击「安装吉米奈的工作台」，完成后从 Dock 启动。 |
+| **Windows**，在本机用 AI 接手移植 | **[下载 Windows AI 接手包（ZIP）](https://github.com/shiduncong-creator/ModelDesk-AGY-Plugin/releases/download/v2.35.1/ModelDesk-2.35.1-Windows-AI-Handoff.zip)** | 全部解压，用编程 AI 打开 `源码` 文件夹，复制顶层《Windows-AI部署指引.md》里的提示词。包内含源码和指引，Windows 安装器仍待移植。 |
 
-Mac 安装包使用 Apple Development 开发签名，尚未通过 Apple 公证，首次打开可能被 Gatekeeper 拦截。[macOS 简明使用说明](docs/简明使用说明.txt) · [Windows 部署指引](docs/Windows-AI部署指引.md) · [版本说明与校验值](https://github.com/shiduncong-creator/ModelDesk-AGY-Plugin/releases/tag/v2.35.0)
+Mac 安装包使用 Apple Development 开发签名，尚未通过 Apple 公证，首次打开可能被 Gatekeeper 拦截。[macOS 简明使用说明](docs/简明使用说明.txt) · [Windows 部署指引](docs/Windows-AI部署指引.md) · [版本说明与校验值](https://github.com/shiduncong-creator/ModelDesk-AGY-Plugin/releases/tag/v2.35.1)
 
 开发者可以用 **Code → Download ZIP** 获取当前分支源码。解压后，在含 `pyproject.toml` 的目录开始构建。[macOS 构建步骤](docs/HANDOFF.md)
 
