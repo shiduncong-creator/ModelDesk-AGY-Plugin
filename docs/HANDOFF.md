@@ -1,6 +1,6 @@
 # 吉米奈的工作台 · 项目交接
 
-发行基线为 Antigravity 2.35.0、Electron 44.9.1、Apple Silicon。普通用户使用 DMG。源码 ZIP 是可独立解压的工程快照，包含前端原稿、预构建插件页面、服务、回归用例和生成发行包所需的代码。
+发行基线为 Antigravity 2.35.1、Electron 44.9.1、Apple Silicon。普通用户使用 DMG。源码 ZIP 是可独立解压的工程快照，包含前端原稿、预构建插件页面、服务、回归用例和生成发行包所需的代码。
 
 Windows 移植从[Windows AI 部署指引](Windows-AI部署指引.md)开始，其中附有给接手 AI 的提示词、PowerShell 命令和目标机验收样例。
 
@@ -40,7 +40,7 @@ node tests/host_activity.cjs
 
 ## 从源码生成交付包
 
-1. 准备 Apple Silicon Mac、Xcode Command Line Tools、uv、可用的代码签名身份和 Google 原版 Antigravity 2.35.0。将原版安装到 `/Applications/Antigravity.app`。
+1. 准备 Apple Silicon Mac、Xcode Command Line Tools、uv、可用的代码签名身份和 Google 原版 Antigravity 2.35.1。将原版安装到 `/Applications/Antigravity.app`。
 2. 从 Electron 官方 44.9.1 发行页下载 `electron-v44.9.1-darwin-arm64.zip`。构建器核对固定 SHA-256；也会校验 Google 签名及版本。首次运行需要网络下载 Python 发行版和锁定的 wheels。
 3. 在源码根目录执行下面的命令，指定空的外部输出目录。多个签名身份时，增加 `--identity` 并填写证书全名。构建不会安装到发布机的 Dock。
 
@@ -59,7 +59,7 @@ python3 -B macos/build-release.py --electron-zip ~/Downloads/electron-v44.9.1-da
 挂载生成的镜像后，可在源码根目录执行发行冒烟验收。它从 Google 下载组件，在临时用户目录完成首次安装及覆盖安装，核对配置、插件、HUD、文件助手和签名，最后自动清理。实际 Dock 与首次登录另行实测。
 
 ```sh
-python3 tests/release_smoke.py "/Volumes/吉米奈的工作台 2.35.0/安装吉米奈的工作台.app"
+python3 tests/release_smoke.py "/Volumes/吉米奈的工作台 2.35.1/安装吉米奈的工作台.app"
 ```
 
 用新账户从 Dock 打开，派一个实际任务观察 Codex 的运行和结束，展开一条带可见思考摘要的消息，核对 MP 和 HP，再用文件右键做一次预览。确认外部 CLI、翻译帐号和模型均为测试方所有。

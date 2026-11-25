@@ -12,11 +12,11 @@ import subprocess
 import sys
 import tempfile
 
-VERSION = "2.35.0"
-UPSTREAM_URL = "https://storage.googleapis.com/antigravity-public/antigravity-hub/2.35.0-6394266482769920/darwin-arm/Antigravity.dmg"
-DMG_HASH = "51105bc2227e41379c42358d01139c6eb9b66d63eee75de10f717208e8f1c672"
+VERSION = "2.35.1"
+UPSTREAM_URL = "https://storage.googleapis.com/antigravity-public/antigravity-hub/2.35.1-4615540875067392/darwin-arm/Antigravity.dmg"
+DMG_HASH = "be9694a3baff68c4126c4e298990d8f33309a471f6941936c377989602d163a6"
 GOOGLE = ('identifier "com.google.antigravity" and anchor apple generic and certificate leaf[subject.OU] = "EQHXZ8M8AV"'
-          ' and cdhash H"ddf5a6d3b675b6901f37bc12dce60588587bd16d"')
+          ' and cdhash H"9a57f50552baa4d752930f5a9b0cd7acd86119fd"')
 REGISTER = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 NAME = "吉米奈的工作台.app"
 
@@ -60,7 +60,7 @@ def get_upstream(work, cache, installed):
         return
     image = cache / ("Antigravity-" + VERSION + "-arm64.dmg")
     if not image.is_file() or digest(image) != DMG_HASH:
-        print("正在从 Google 下载 Antigravity " + VERSION + "，约 242 MB…", flush=True)
+        print("正在从 Google 下载 Antigravity " + VERSION + "…", flush=True)
         temporary = cache / "Antigravity-download.part"
         check("/usr/bin/curl", "--disable", "--fail", "--location", "--silent", "--show-error", "--retry", "2",
               "--proto", "=https", "--proto-redir", "=https", "--connect-timeout", "20", "--max-time", "900",

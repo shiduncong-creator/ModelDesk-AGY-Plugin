@@ -1,6 +1,6 @@
 # 在 Windows 上用 AI 部署「吉米奈的工作台」
 
-这份接手包包含 2.35.0 的完整项目源码和已在 Mac 上使用的像素工坊。**Windows 安装器尚待实现。** 第一次接手需要让能读写本机文件、运行 PowerShell 的编程 AI 完成移植。目标是做出一个可以交给下一位用户双击安装的 Windows 版。
+这份接手包包含 ModelDesk 2.35.2 的完整项目源码和已在 Mac 上使用的像素工坊。**Windows 安装器尚待实现。** 第一次接手需要让能读写本机文件、运行 PowerShell 的编程 AI 完成移植。目标是做出一个可以交给下一位用户双击安装的 Windows 版。
 
 ## 接手者只需做三步
 
@@ -38,7 +38,7 @@ uv sync --python 3.12
 
 | 顺序 | 查阅源码 | 需要在 Windows 上完成的事 |
 | --- | --- | --- |
-| 1. 确认桌面基线 | `macos/install-desktop.py`、`scripts/build-host-bundle.py`、`scripts/desktop_runtime235.py` | 在 Google 历史版本页选 **Antigravity App → 2.35.0 → Windows → 对应架构**。记录实际文件版本和发行者。Mac 工程对应 Electron 44.9.1，在 Windows 上先核对宿主及其支持的网页资源加载方式。已装其他版本时先做兼容检查，保留现有安装。 |
+| 1. 确认桌面基线 | `macos/install-desktop.py`、`scripts/build-host-bundle.py`、`scripts/desktop_runtime235.py` | 在 Google 历史版本页选 **Antigravity App → 2.35.1 → Windows → 对应架构**。记录实际文件版本和发行者。Mac 工程对应 Electron 44.9.1，在 Windows 上先核对宿主及其支持的网页资源加载方式。已装其他版本时先做兼容检查，保留现有安装。 |
 | 2. 启动后台及派单 | `server/storage.py`、`hooks/sync_hook.py`、`server/task_runner.py`、`server/adapters/`、`mcp_config.json`、`hooks.json` | 将 `fcntl` 文件锁、进程组终止和 CLI 路径发现适配到 Windows。为 Windows 生成能直接启动随包 Python 的 MCP 和 hook 入口，覆盖带空格及中文的路径。验证任务启动、取消、续接和真实状态回传。 |
 | 3. 接回原生窗口和文件 | `ui/host/`、`ui/src/office/`、`macos/desktop-hud.cjs`、`macos/desktop-history.cjs`、`server/desktop_hud.py`、`server/desktop_history.py`、`server/deliverables.py`、`server/translator.py` | 复用已有界面和 HUD 协议，接入 Windows 独立资料目录。实现资源管理器定位、文件路径与 URI 转换、回收站确认、当前用户凭据存储。若 MCP 工具已经列出但主窗口没有工坊，检查桌面布局和 HUD 的挂载。 |
 | 4. 做成可交付安装包 | `macos/build-release.py`、`macos/install-release.py`、`tests/release_smoke.py` 是现有发行流程参考 | 新增 Windows 构建和安装入口。打包对应架构的运行时与依赖，使用独立应用目录、资料和开始菜单入口。验证普通用户首次安装、重复安装、升级保留设置及卸载。记录安装包签名状态。 |

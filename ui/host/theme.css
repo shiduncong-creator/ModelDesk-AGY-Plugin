@@ -190,6 +190,18 @@ body, body:is(.theme-light,.theme-dark,.light-theme,.dark-theme,.light,.dark) {
     padding: 8px 12px;
     color: var(--farm-ink);
 }
+[data-testid="agent-response"]:not(:empty) + fieldset[aria-label="Response actions"] {
+    margin-block-start: 8px;
+}
+fieldset[aria-label="Response actions"] [data-testid="cascade-system-message-toolbar"] {
+    inline-size: fit-content;
+    max-inline-size: 100%;
+    padding-block: 2px;
+    background: var(--farm-paper) var(--farm-page);
+}
+fieldset[aria-label="Response actions"] [data-testid="cascade-system-message-toolbar"] > .flex-wrap {
+    padding-block-start: 2px;
+}
 @media (min-width:1000px) {
     [data-testid="agent-response"]:not(:empty)::before {
         content: "";
@@ -198,7 +210,7 @@ body, body:is(.theme-light,.theme-dark,.light-theme,.dark-theme,.light,.dark) {
         height: 33px;
         left: -34px;
         top: 2px;
-        background: url("art/silver-dragon.png") center bottom / contain no-repeat;
+        background: url("art/gemini-avatar.png") center bottom / contain no-repeat;
         image-rendering: pixelated;
         pointer-events: none;
     }
