@@ -195,14 +195,28 @@ def create_server(data_dir, *, services=None, mask_key_details=True):
 
     @server.tool()
     async def get_cli_task_status(task_id: str | None = None) -> CallToolResult:
-        """查询单项任务及日志尾部，或列出最近任务。"""
+        """查询单项任务及日志尾部，或列出最近任务。主模型独立核验通过后调用 accept_cli_task。"""
         await asyncio.to_thread(runner.reconcile)
         if task_id:
             data = await asyncio.to_thread(runner.logs, task_id, 20)
             data["text"] = data["text"][-40000:]
-            return result(data, f"任务 {task_id} · {data['task']['status']}", model_visible=True)
+            task = data["task"]
+            message = f"任务 {task_id} · {task['status']}"
+            if task["status"] == "review":
+                message += (f"。派单会话 ID 为 {task['conversation_id']}。独立核对交付和验证结果通过后，"
+                            "调用 accept_cli_task，传入任务 ID、派单会话 ID 和验证证据。")
+            return result(data, message, model_visible=True)
         rows = [runner.public(t) for t in runner.rows()[:30]]
         return result({"tasks": rows}, f"近期任务 {len(rows)} 项。", model_visible=True)
+
+    @server.tool()
+    async def accept_cli_task(task_id: str, conversation_id: str, evidence: str) -> CallToolResult:
+        """主模型已独立核对交付并确认验收通过时登记结案。传入派单会话 ID 和实际检查及结果。"""
+        evidence = evidence.strip()
+        if not conversation_id.strip() or not 1 <= len(evidence) <= 4000:
+            raise ValueError("请提供派单会话 ID 和不超过 4000 字的非空验收证据")
+        row = await asyncio.to_thread(runner.review, task_id, True, conversation_id=conversation_id, evidence=evidence)
+        return result(row, f"任务 {task_id} · 已验收", model_visible=True)
 
     @server.tool()
     async def cancel_cli_task(task_id: str, pause: bool = False) -> CallToolResult:

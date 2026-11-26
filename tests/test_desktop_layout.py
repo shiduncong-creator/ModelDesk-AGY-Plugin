@@ -32,6 +32,70 @@ class Tags(HTMLParser):
 
 class DesktopLayoutTests(unittest.TestCase):
     @unittest.skipUnless(SOURCE.is_file() and Path("/Applications/Google Chrome.app").is_dir(), "needs the local desktop UI and Chromium")
+    def test_background_activity_stays_inside_reply_card(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder)
+            with zipfile.ZipFile(io.BytesIO(BUILD["original_bundle"](SOURCE))) as web:
+                for name in ("jetbox.css", "compiled_tailwind.css"):
+                    (path / name).write_bytes(web.read(name))
+            theme = (ROOT / "ui/host/theme.css").as_uri()
+            page = path / "activity.html"
+            page.write_text(f'''<!doctype html><meta charset="utf-8">
+                <link rel="stylesheet" href="jetbox.css">
+                <link rel="stylesheet" href="compiled_tailwind.css">
+                <link rel="stylesheet" href="{theme}">
+                <div data-testid="conversation-view">
+                  <div class="flex flex-col gap-0.5 w-full" data-turn-content="latest">
+                    <div data-md-reply-card>
+                    <div data-testid="agent-response">正在独立编译并验证修复。</div>
+                    <fieldset aria-label="Response actions" class="min-w-0"><div>
+                      <div class="flex flex-col px-2" data-testid="cascade-system-message-toolbar">
+                        <button type="button" data-testid="idle-status-text"
+                          class="flex items-center gap-1.5 text-muted-foreground min-w-0 max-w-full border-none bg-transparent outline-none text-left truncate self-start -mt-1 mb-1">
+                          <span class="animate-shimmer-text truncate"><span class="shimmer-text-mask"><span class="shimmer-text-content">1 个后台任务正在运行</span></span></span>
+                        </button>
+                        <div class="-mx-1 flex flex-wrap items-center gap-x-1 gap-y-0.5 pt-3"><button>复制</button></div>
+                      </div>
+                    </div></fieldset>
+                    </div>
+                  </div>
+                </div>
+                <output></output>
+                <script>addEventListener("load", () => {{
+                  const get = id => document.querySelector('[data-testid="' + id + '"]');
+                  const view = get("conversation-view"), reply = get("agent-response");
+                  const toolbar = get("cascade-system-message-toolbar"), status = get("idle-status-text");
+                  const card = reply.closest("[data-md-reply-card]"), footer = status.closest("fieldset");
+                  const actions = toolbar.querySelector(".flex-wrap");
+                  let checks = 0;
+                  for (const dark of [false, true]) {{
+                    document.body.classList.toggle("dark", dark);
+                    for (const width of [185, 360, 760]) {{
+                      view.style.width = width + "px";
+                      status.querySelector(".shimmer-text-content").textContent = width < 200
+                        ? "18 个子代理和后台任务正在运行，2 个子代理受阻" : "1 个后台任务正在运行";
+                      const box = status.getBoundingClientRect(), content = reply.getBoundingClientRect();
+                      const frame = card.getBoundingClientRect(), buttons = actions.getBoundingClientRect();
+                      if (box.top - content.bottom >= 12 && box.left === content.left
+                        && box.right <= content.right && box.bottom < buttons.top && buttons.bottom < frame.bottom
+                        && (width >= 200 || status.firstElementChild.getBoundingClientRect().height > 30)
+                        && getComputedStyle(footer).borderTopWidth === "1px"
+                        && getComputedStyle(card).backgroundColor !== "rgba(0, 0, 0, 0)"
+                        && [reply, status, toolbar].every(node =>
+                          getComputedStyle(node).backgroundColor === "rgba(0, 0, 0, 0)")) checks++;
+                    }}
+                  }}
+                  status.focus();
+                  if (document.activeElement === status && status.tabIndex === 0) checks++;
+                  document.querySelector("output").textContent = checks + "/7";
+                }});</script>''')
+            app = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+            run = subprocess.run([app, "--headless", "--no-first-run", "--disable-background-networking",
+                                  f"--user-data-dir={path / 'profile'}", "--virtual-time-budget=500", "--dump-dom",
+                                  page.as_uri()], capture_output=True, text=True, check=True, timeout=25)
+            self.assertIn('<output>7/7</output>', run.stdout)
+
+    @unittest.skipUnless(SOURCE.is_file() and Path("/Applications/Google Chrome.app").is_dir(), "needs the local desktop UI and Chromium")
     def test_full_host_entry_initializes_on_cold_load(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder)
@@ -116,6 +180,9 @@ class DesktopLayoutTests(unittest.TestCase):
                 self.assertNotIn('b.payload.overviewPanelOpen&&(a.overviewPanelOpen=', main)
                 self.assertIn('label:window.ModelDeskLocale.chrome("Review"),detail:', main)
                 self.assertIn('sectionId:"backgroundTasks",title:window.ModelDeskLocale.chrome("Background Tasks")', main)
+                self.assertIn('{"data-md-reply-card":""},E.createElement("div",{"data-testid":"agent-response","data-quotable":"true"}', main)
+                boundary = 'isLatest:a.isLatest&&xa}))),pa(ba)' if modern else 'isLatest:a.isLatest&&ua}))),Da(pa)'
+                self.assertIn(boundary, main)
                 addon = next(attrs["src"] for tag, attrs in tags if tag == 'script'
                              and attrs.get("src", "").startswith("/modeldesk-host/"))
                 js = web.read(addon.lstrip("/")).decode()

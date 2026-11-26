@@ -181,7 +181,7 @@ body, body:is(.theme-light,.theme-dark,.light-theme,.dark-theme,.light,.dark) {
     border-radius: 0 !important;
 }
 .agy-user-bubble-frame { background: transparent !important; box-shadow: 1px 2px var(--farm-beam); }
-[data-testid="agent-response"]:not(:empty) {
+:is([data-md-reply-card], [data-testid="agent-response"]:not([data-md-reply-card] > *)):not(:empty) {
     position: relative;
     border: 5px solid transparent;
     border-image: var(--farm-frame) 6 / 5px repeat;
@@ -190,20 +190,28 @@ body, body:is(.theme-light,.theme-dark,.light-theme,.dark-theme,.light,.dark) {
     padding: 8px 12px;
     color: var(--farm-ink);
 }
-[data-testid="agent-response"]:not(:empty) + fieldset[aria-label="Response actions"] {
+[data-md-reply-card] > fieldset[aria-label="Response actions"] {
     margin-block-start: 8px;
+    padding-block-start: 6px;
+    border-block-start: 1px solid color-mix(in srgb,var(--farm-edge) 38%,transparent);
 }
-fieldset[aria-label="Response actions"] [data-testid="cascade-system-message-toolbar"] {
-    inline-size: fit-content;
-    max-inline-size: 100%;
-    padding-block: 2px;
-    background: var(--farm-paper) var(--farm-page);
+[data-md-reply-card] [data-testid="cascade-system-message-toolbar"] {
+    padding-inline: 0;
 }
-fieldset[aria-label="Response actions"] [data-testid="cascade-system-message-toolbar"] > .flex-wrap {
-    padding-block-start: 2px;
+/* The native activity trigger uses a negative top margin on its plain toolbar. */
+fieldset[aria-label="Response actions"] [data-testid="idle-status-text"] {
+    margin-block: 0 3px;
+    font-size: .875em;
+}
+fieldset[aria-label="Response actions"] [data-testid="idle-status-text"] > .truncate {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+[data-md-reply-card] [data-testid="cascade-system-message-toolbar"] > .flex-wrap {
+    padding-block-start: 0;
 }
 @media (min-width:1000px) {
-    [data-testid="agent-response"]:not(:empty)::before {
+    :is([data-md-reply-card], [data-testid="agent-response"]:not([data-md-reply-card] > *)):not(:empty)::before {
         content: "";
         position: absolute;
         width: 27px;
@@ -480,12 +488,12 @@ body :is(.agy-overlay.surface-glass:is([role="menu"],[role="listbox"]),
 @media (max-width:700px), (max-height:560px) {
     [data-testid="sidebar-navigation-items"]::before, [data-testid="settings-sidebar"]::before { height: 38px; }
     [data-testid="home-greeting"]::before { width: min(460px,100%); height: auto; max-height:16vh; border-width:4px; }
-    [data-testid="agent-response"]:not(:empty) { padding: 5px 7px; border-width: 3px; }
+    :is([data-md-reply-card], [data-testid="agent-response"]:not([data-md-reply-card] > *)):not(:empty) { padding: 5px 7px; border-width: 3px; }
     [data-testid="agent-input-box"] .surface-composer { border-width:4px !important; }
 }
 @media (forced-colors:active) {
-    [data-testid="conversation-view"], [data-testid="agent-response"], [data-modeldesk-host-menu] { background: Canvas; color:CanvasText; }
+    [data-testid="conversation-view"], [data-md-reply-card], [data-testid="agent-response"], [data-modeldesk-host-menu] { background: Canvas; color:CanvasText; }
     [data-testid="sidebar-navigation-items"]::before, [data-testid="settings-sidebar"]::before,
-    [data-testid="home-greeting"]::before, [data-testid="agent-response"]::before { display:none; }
+    [data-testid="home-greeting"]::before, [data-md-reply-card]::before, [data-testid="agent-response"]::before { display:none; }
     [data-modeldesk-host-menu] [role="menuitem"]:focus-visible { outline:2px solid Highlight; }
 }

@@ -342,12 +342,18 @@ class Runner:
         self.reconcile()
         return self.public(self.read(task_id))
 
-    def review(self, task_id, accepted):
+    def review(self, task_id, accepted, *, conversation_id=None, evidence=None):
         folder = self.folder(task_id)
         with file_lock(folder / "task.lock"):
             row = self.read(task_id)
+            if conversation_id is not None and row.get("conversation_id") != conversation_id:
+                raise ValueError("任务不属于指定的派单会话")
+            if accepted and row["status"] == "accepted":
+                return self.public(row)
             if row["status"] not in {"review", "completed"}:
                 raise ValueError("任务当前无法验收")
+            if accepted and evidence is not None:
+                row["review_evidence"] = evidence
             self.persist(folder, updated(row, status="accepted" if accepted else "review"))
         return self.public(row)
 
@@ -388,6 +394,8 @@ class Runner:
         row = self.read(task_id)
         output = tail(self.folder(task_id) / "output.log", limit, before)
         output["task"] = self.public(row)
+        if row.get("review_evidence"):
+            output["review_evidence"] = row["review_evidence"]
         if include_diff or row["status"] == "recovery_pending" and before is None:
             output["snapshot"] = self.snapshot(row)
         return output

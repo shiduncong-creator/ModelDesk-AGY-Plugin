@@ -17,7 +17,7 @@ from server.task_runner import Runner
 from .support import ROOT, fake_environment, register, sandbox
 
 MODEL_TOOLS = {"open_workbench", "dispatch_cli_agent", "resume_cli_task", "get_cli_task_status",
-               "cancel_cli_task", "translate_text"}
+               "accept_cli_task", "cancel_cli_task", "translate_text"}
 APP_TOOLS = {"app_dashboard", "app_list_files", "app_file_action",
              "app_context_usage", "app_get_task_logs", "app_task_action",
              "app_translate", "app_save_prefs", "app_thoughts", "app_retry_thought", "app_test_api"}
@@ -70,6 +70,7 @@ class MCPTest(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(tools[name].meta, {"ui": {"resourceUri": STRIP_URI}})
                 for name in APP_TOOLS:
                     self.assertEqual(tools[name].meta["ui"]["visibility"], ["app"])
+                self.assertFalse(tools["accept_cli_task"].meta)
                 resources = (await session.list_resources()).resources
                 self.assertEqual({(str(resource.uri), resource.mimeType) for resource in resources},
                                  {(URI, MIME), (STRIP_URI, MIME)})
@@ -213,7 +214,24 @@ class MCPTest(unittest.IsolatedAsyncioTestCase):
                 self.assertFalse(recovered.isError, recovered)
                 status = await read_status(session, identifiers[0], lambda task: task["status"] == "review")
                 self.assertIn("原会话续接完成", status["text"])
+                task_id = identifiers[0]
+                pending = await session.call_tool("get_cli_task_status", {"task_id": task_id})
+                self.assertIn("accept_cli_task", pending.content[0].text)
+                self.assertIn("test-conversation", pending.content[0].text)
                 without = await session.call_tool("get_cli_task_status", {"task_id": identifiers[1]})
                 self.assertIsNone(without.structuredContent["task"]["native_session_id"])
                 self.assertEqual(without.structuredContent["task"]["status"], "recovery_pending")
                 self.assertIn("crashed before native session", without.structuredContent["snapshot"]["log"])
+                args = {"task_id": task_id, "conversation_id": "test-conversation",
+                        "evidence": "核对了 partial.txt 的内容及原会话续接日志。"}
+                for invalid in ({"conversation_id": "other-chat"}, {"evidence": " "}, {"task_id": identifiers[1]}):
+                    rejected = await session.call_tool("accept_cli_task", {**args, **invalid})
+                    self.assertTrue(rejected.isError)
+                self.assertEqual(Runner(data).read(task_id)["status"], "review")
+                accepted = await session.call_tool("accept_cli_task", args)
+                self.assertFalse(accepted.isError, accepted)
+                self.assertEqual(accepted.structuredContent["status"], "accepted")
+                retried = await session.call_tool("accept_cli_task", {**args, "evidence": "重复提交"})
+                self.assertEqual(retried.structuredContent, accepted.structuredContent)
+                logs = await session.call_tool("app_get_task_logs", {"task_id": task_id})
+                self.assertEqual(logs.structuredContent["review_evidence"], args["evidence"])

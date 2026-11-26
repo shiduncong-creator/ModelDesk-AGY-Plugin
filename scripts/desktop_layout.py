@@ -167,6 +167,15 @@ def integrate(source, assets):
     code = localized_host(host, modern)
     code = integrate_thoughts(code, modern, replace_one)
     code = workshop_overview(code, modern)
+
+    # Give the standard reply and its native toolbar one frame. The quotable
+    # reply, toolbar handlers and following turn markers keep their own nodes.
+    reply = 'E.createElement("div",{"data-testid":"agent-response","data-quotable":"true"},'
+    code = replace_one(code, reply, 'E.createElement("div",{"data-md-reply-card":""},' + reply)
+    actions_end = ('isLatest:a.isLatest&&xa})),pa(ba),a.isLatest&&' if modern else
+                   'isLatest:a.isLatest&&ua})),Da(pa),a.isLatest&&')
+    code = replace_one(code, actions_end, actions_end.replace('})),', '}))),', 1))
+
     code = replace_one(code, mounting_point, thoughts + "\n" + slots + "\n" + mounting_point)
     home = f'E.createElement({greeting_component},null)'
     code = replace_one(code, home, f'E.createElement(E.Fragment,null,{home},E.createElement(ModelDeskNativeSurface,{{mode:"home"}}))')

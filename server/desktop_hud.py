@@ -164,6 +164,8 @@ class DesktopHUD:
         session = catalog.get(sid, {})
         active = session.get("conversationId")
         tasks = self.session_tasks(catalog, sid) if not sid or active else []
+        if not sid:
+            tasks = [task for task in tasks if task["status"] in {"queued", "running", "recovery_pending"}]
         folders = [str(root) for folder in session.get("workspacePaths", []) if (root := project_root(folder))]
         return {"session": {"id": active, "title": session.get("title"), "model": session.get("modelName"),
                             "workspaces": folders, "read_only": bool(session.get("indexed_only")),

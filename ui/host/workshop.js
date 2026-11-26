@@ -52,7 +52,7 @@
     const sid = () => conversationId || null;
     const availableFiles = () => !sid() ? [] : (searchRows || state.files || []);
     const currentTasks = () => (state.tasks || []).filter(task => task.conversation_id && (sid() ?
-      task.conversation_id === sid() : running.has(task.status) || pendingReview.has(task.status) || task.status === 'recovery_pending'));
+      task.conversation_id === sid() : running.has(task.status) || task.status === 'recovery_pending'));
     function nativeActivity() {
       return sid() && state.hostActivity?.conversationId === sid() ? state.hostActivity : null;
     }
@@ -267,6 +267,7 @@
         if (alive && token === dialogVersion) show('任务变更', [node('pre', diff.snapshot?.diff || '暂无差异'), button('返回任务', () => openTask(task))]);
       }));
       const children = [node('p', [engineNames[row.engine], statuses[row.status], row.cwd, row.error || row.recovery_reason].filter(Boolean).join(' · ')), actions];
+      if (data.review_evidence) children.push(node('h3', '主模型验收记录'), node('pre', data.review_evidence));
       if (row.changed_files?.length) children.push(node('h3', '交付与变更文件'), node('pre', row.changed_files.join('\n')));
       if (data.snapshot) children.push(node('h3', '中断现场'), node('pre', data.snapshot.diff || JSON.stringify(data.snapshot.git_status || {})));
       children.push(node('h3', '执行日志'));
@@ -275,7 +276,7 @@
       if (before) children.push(button('回到最新', () => openTask(task)));
       show(row.title || '工位任务', children);
       activeTask = row.id; currentLog = log;
-      if (running.has(row.status) && !before) {
+      if ((running.has(row.status) || pendingReview.has(row.status)) && !before) {
         const owner = dialogVersion;
         const refresh = async () => {
           if (!alive || owner !== dialogVersion) return;

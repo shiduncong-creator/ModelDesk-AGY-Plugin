@@ -134,10 +134,18 @@ async function exercise() {
   click(visibleDialog(),'关闭');
   ui.update({...snapshot,tasks:[],hostActivity:{...activity,conversationId:'old',tasks:[{...delegated,state:'running'}]}});
   check('a stale native event cannot mark the current desk busy',!!$('.mdw-seats [aria-label="Codex · 空闲"]') && $('.mdw-models').hidden);
+  ui.update({...snapshot,tasks:[{...task,status:'review'}]});
+  check('a review stays visible in its own chat',!!$('.mdw-seats [aria-label="Codex · 待验收"]'));
+  ui.update({...snapshot,tasks:[{...task,status:'accepted'}]});
+  check('the station reflects a recorded acceptance without a manual click',
+    !!$('.mdw-seats [aria-label="Codex · 已验收"]') && !!$('.mdw-seats [aria-label="吉米奈 · 主控·空闲"]'));
   ui.destroy(); check('route unmount removed all workbench controls',!frame.querySelector('canvas,dialog'));
   const next = window.ModelDeskWorkshop.mount(frame,{call,conversationId:null,mode:'home'});
-  next.update({session:{},tasks:[task],files:[],prefs:{}});
-  check('a past accepted task never appears as current at the new conversation home',!!$('.mdw-seats [aria-label="Codex · 空闲"]'));
+  next.update({session:{},tasks:[task,{...task,id:'old-review',status:'review'}],files:[],prefs:{}});
+  check('past acceptance and review leave both stations idle at the new conversation home',
+    !!$('.mdw-seats [aria-label="Codex · 空闲"]') && !!$('.mdw-seats [aria-label="吉米奈 · 主控·空闲"]'));
+  next.update({session:{},tasks:[{...task,status:'running'}],files:[],prefs:{}});
+  check('the home still shows active work',!!$('.mdw-seats [aria-label="Codex · 执行中"]'));
   click(frame,'本轮产物'); await tick();
   check('new home has empty artifacts without requesting a historical session',frame.textContent.includes('开启对话后'));
   next.destroy();
